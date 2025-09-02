@@ -1,0 +1,17 @@
+import { register, login, logout, getUserProfile } from "../controller/authController.js";
+import express from "express";
+import { authenticateToken } from "../middleware/auth.js";
+import { updateEmployee } from "../controller/employeeController.js";
+
+const router = express.Router();
+
+// Public routes
+router.post("/register", register);
+router.post("/login", login);
+
+// Protected routes (require authentication)
+router.post("/logout", authenticateToken, logout);
+router.get("/profile", authenticateToken, getUserProfile);
+router.put("/employee/:id", authenticateToken, updateEmployee);
+
+export default router;

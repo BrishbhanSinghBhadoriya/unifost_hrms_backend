@@ -1,0 +1,336 @@
+import User from "../model/userSchema.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
+
+export const register = async (req, res) => {
+    const { 
+        username, 
+        password, 
+        name, 
+        phone, 
+        email, 
+        role, 
+        employeeId, 
+        department, 
+        designation,
+        dob
+    } = req.body;
+    
+    // Check required fields
+    if(!username || !password || !name || !phone || !email || !role || !employeeId || !department || !designation) {
+        return res.status(400).json({ 
+            message: "All required fields are missing",
+            required: ["username", "password", "name", "phone", "email", "role", "employeeId", "department", "designation"]
+        });
+    }
+    
+    try {
+        // Check if user already exists
+        const existingUser = await User.findOne({ 
+            $or: [
+                { username }, 
+                { email }, 
+                { employeeId }
+            ]
+        });
+        
+        if(existingUser) {
+            return res.status(400).json({ 
+                message: "User already exists with this username, email, or employee ID" 
+            });
+        }
+        
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Prepare user payload
+        const payload = { 
+            username, 
+            password: hashedPassword, 
+            name, 
+            phone, 
+            email, 
+            role, 
+            employeeId, 
+            department, 
+            designation 
+        };
+        if (dob) {
+            payload.dob = new Date(dob);
+        }
+
+        // Create new user
+        const user = new User(payload);
+
+        await user.save();
+        
+        // Remove password from response
+        const userResponse = user.toObject();
+        delete userResponse.password;
+        
+        res.status(201).json({
+            user: userResponse,
+            status: "success",
+            message: "User registered successfully" 
+        });
+    } catch (error) {
+        console.error("Registration error:", error);
+        res.status(500).json({ 
+            message: "Error registering user", 
+            error: error.message 
+        });
+    }
+};
+
+
+export const login = async (req, res) => {
+    const { username, password } = req.body;
+            if (!username || !password) {
+            return res.status(400).json({ 
+                status: "error",
+                message: "Username and password are required" 
+            });
+        }
+    
+    try {
+        // Find user and populate all fields
+        const user = await User.findOne({ username }).select('+password');
+        if (!user) {
+            return res.status(401).json({ 
+                status: "error",
+                message: "Invalid credentials" 
+            });
+        }
+        
+        // Check if user is active
+        if (!user.isActive) {
+            return res.status(401).json({ 
+                status: "error",
+                message: "Account is deactivated" 
+            });
+        }
+        
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ 
+                status: "error",
+                message: "Invalid credentials" 
+            });
+        }
+        
+        // Update last login time
+        user.lastLogin = new Date();
+        await user.save();
+        
+        // Generate JWT token
+        const token = jwt.sign({ 
+            userId: user._id,
+            username: user.username,
+            role: user.role,
+            employeeId: user.employeeId
+        }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        
+        // Remove password from response
+        const userResponse = user.toObject();
+        delete userResponse.password;
+        
+        const formattedDob = userResponse.dob ? new Date(userResponse.dob).toISOString() : null;
+        
+        // Return complete user details
+        res.status(200).json({
+            status: "success",
+            message: "Login successful",
+            token: token,
+            user: {
+                // Basic Info
+                _id: userResponse._id,
+                username: userResponse.username,
+                role: userResponse.role,
+                
+                // Status Flags
+                isAdmin: userResponse.isAdmin,
+                isManager: userResponse.isManager,
+                isHR: userResponse.isHR,
+                isEmployee: userResponse.isEmployee,
+                isActive: userResponse.isActive,
+                
+                // Personal Information
+                name: userResponse.name,
+                email: userResponse.email,
+                phone: userResponse.phone,
+                address: userResponse.address,
+                city: userResponse.city,
+                state: userResponse.state,
+                zip: userResponse.zip,
+                country: userResponse.country,
+                dob: formattedDob,
+                gender: userResponse.gender,
+                profilePicture: userResponse.profilePicture,
+                
+                // Employment Information
+                employeeId: userResponse.employeeId,
+                joiningDate: userResponse.joiningDate,
+                salary: userResponse.salary,
+                experience: userResponse.experience,
+                education: userResponse.education,
+                
+                // Bank Information
+                bankName: userResponse.bankName,
+                bankAccountNumber: userResponse.bankAccountNumber,
+                bankAccountType: userResponse.bankAccountType,
+                bankIFSC: userResponse.bankIFSC,
+                bankAccountHolderName: userResponse.bankAccountHolderName,
+                
+                // Work Details
+                department: userResponse.department,
+                designation: userResponse.designation,
+                
+                // Additional Fields
+                skills: userResponse.skills,
+                certifications: userResponse.certifications,
+                achievements: userResponse.achievements,
+                notes: userResponse.notes,
+                lastLogin: userResponse.lastLogin,
+                
+                // Timestamps
+                createdAt: userResponse.createdAt,
+                updatedAt: userResponse.updatedAt
+            }
+        });
+        
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ 
+            status: "error",
+            message: "Error during login", 
+            error: error.message 
+        });
+    }
+};
+
+
+
+export const logout = async (req, res) => {
+    try {
+        // Get user from authenticated request
+        const userId = req.user._id;
+        
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ 
+                status: "error",
+                message: "User not found" 
+            });
+        }
+        
+        // Clear token (if you have token field in user schema)
+        if (user.token) {
+            user.token = null;
+            await user.save();
+        }
+        
+        res.status(200).json({ 
+            status: "success",
+            message: "Logged out successfully" 
+        });
+    } catch (error) {
+        console.error("Logout error:", error);
+        res.status(500).json({ 
+            status: "error",
+            message: "Error during logout" 
+        });
+    }
+};
+
+export const getUserProfile = async (req, res) => {
+    try {
+        // Get user from authenticated request
+        const userId = req.user._id;
+        
+        // Find user by ID
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ 
+                status: "error",
+                message: "User not found" 
+            });
+        }
+        
+        // Remove password from response
+        const userResponse = user.toObject();
+        delete userResponse.password;
+        const formattedDob = userResponse.dob ? new Date(userResponse.dob).toISOString() : null;
+        
+        // Return complete user details
+        res.status(200).json({
+            status: "success",
+            message: "Profile retrieved successfully",
+            user: {
+                // Basic Info
+                _id: userResponse._id,
+                username: userResponse.username,
+                role: userResponse.role,
+                
+                // Status Flags
+                isAdmin: userResponse.isAdmin,
+                isManager: userResponse.isManager,
+                isHR: userResponse.isHR,
+                isEmployee: userResponse.isEmployee,
+                isActive: userResponse.isActive,
+                
+                // Personal Information
+                name: userResponse.name,
+                email: userResponse.email,
+                phone: userResponse.phone,
+                address: userResponse.address,
+                city: userResponse.city,
+                state: userResponse.state,
+                zip: userResponse.zip,
+                country: userResponse.country,
+                dob: formattedDob,
+                gender: userResponse.gender,
+                profilePicture: userResponse.profilePicture,
+                
+                // Employment Information
+                employeeId: userResponse.employeeId,
+                joiningDate: userResponse.joiningDate,
+                salary: userResponse.salary,
+                experience: userResponse.experience,
+                education: userResponse.education,
+                
+                // Bank Information
+                bankName: userResponse.bankName,
+                bankAccountNumber: userResponse.bankAccountNumber,
+                bankAccountType: userResponse.bankAccountType,
+                bankIFSC: userResponse.bankIFSC,
+                bankAccountHolderName: userResponse.bankAccountHolderName,
+                
+                // Work Details
+                department: userResponse.department,
+                designation: userResponse.designation,
+                
+                // Additional Fields
+                skills: userResponse.skills,
+                certifications: userResponse.certifications,
+                achievements: userResponse.achievements,
+                notes: userResponse.notes,
+                lastLogin: userResponse.lastLogin,
+                
+                // Timestamps
+                createdAt: userResponse.createdAt,
+                updatedAt: userResponse.updatedAt
+            }
+        });
+        
+    } catch (error) {
+        console.error("Get profile error:", error);
+        res.status(500).json({ 
+            status: "error",
+            message: "Error retrieving profile", 
+            error: error.message 
+        });
+    }
+};

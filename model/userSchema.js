@@ -22,7 +22,7 @@ const UserSchema = new mongoose.Schema({
     state: { type: String },
     zip: { type: String },
     country: { type: String, default: "India" },
-    dob: { type: Date },
+    dob: { type: String },  
     gender: { type: String, enum: ["male", "female", "other"], default: "male" },
     profilePicture: { type: String },
     

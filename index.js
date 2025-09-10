@@ -4,6 +4,8 @@ import connectDB from "./config/db.js";
 import userRoutes from "./routes/userRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
+import hrRouter from "./routes/hrRoutes.js";
+
 import cors from "cors";
 
 const app = express();
@@ -18,6 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/leaves", leaveRoutes);
+app.use("/api/hr", hrRouter);
 
 app.get('/', (req, res) => {
 	res.send("Hello World");

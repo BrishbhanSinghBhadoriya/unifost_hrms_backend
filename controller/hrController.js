@@ -1,4 +1,5 @@
-import User from "../models/userModel.js";
+import User from "../model/userSchema.js";
+
 
 export const getEmployee = async (req, res) => {
     const employee=await User.find({role:"employee"})
@@ -36,3 +37,10 @@ export const getEmployeeById = async (req, res) => {
         });
     }
 };
+//  export const getEmployeeLeaves = async (req, res) => {
+//     const employeeLeaves = await EmployeeLeave.find().populate("employeeId", "name");
+//     res.status(200).json({
+//         success:true,
+//         employeeLeaves,
+//         message:"employee leaves fetched successfully"
+//     })}

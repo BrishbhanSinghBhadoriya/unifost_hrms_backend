@@ -4,6 +4,30 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
 
+// Parse flexible date strings like dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, ISO
+const parseFlexibleDate = (value) => {
+    if (!value) return null;
+    if (value instanceof Date && !isNaN(value.getTime())) return value;
+    if (typeof value !== "string") {
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    const v = value.trim();
+    // dd/mm/yyyy or dd-mm-yyyy
+    const m = v.match(/^([0-3]?\d)[\/-](0?[1-9]|1[0-2])[\/-]((?:19|20)?\d\d)$/);
+    if (m) {
+        const d = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10) - 1;
+        let y = parseInt(m[3], 10);
+        if (y < 100) y += 2000; // handle 2-digit year
+        const dt = new Date(y, mo, d);
+        return isNaN(dt.getTime()) ? null : dt;
+    }
+    // Fallback to Date parser (yyyy-mm-dd or ISO)
+    const dt = new Date(v);
+    return isNaN(dt.getTime()) ? null : dt;
+};
+
 export const register = async (req, res) => {
     const { 
         username, 
@@ -57,8 +81,9 @@ export const register = async (req, res) => {
             department, 
             designation 
         };
-        if (dob) {
-            payload.dob = new Date(dob);
+        const parsedDob = parseFlexibleDate(dob);
+        if (parsedDob) {
+            payload.dob = parsedDob;
         }
 
         // Create new user
@@ -83,7 +108,6 @@ export const register = async (req, res) => {
         });
     }
 };
-
 
 export const login = async (req, res) => {
     const { username, password } = req.body;
@@ -137,7 +161,8 @@ export const login = async (req, res) => {
         const userResponse = user.toObject();
         delete userResponse.password;
         
-        const formattedDob = userResponse.dob ? new Date(userResponse.dob).toISOString() : null;
+        const dobDate = parseFlexibleDate(userResponse.dob);
+        const formattedDob = dobDate ? dobDate.toISOString() : null;
         
         // Return complete user details
         res.status(200).json({
@@ -211,8 +236,6 @@ export const login = async (req, res) => {
     }
 };
 
-
-
 export const logout = async (req, res) => {
     try {
         // Get user from authenticated request
@@ -262,7 +285,8 @@ export const getUserProfile = async (req, res) => {
         // Remove password from response
         const userResponse = user.toObject();
         delete userResponse.password;
-        const formattedDob = userResponse.dob ? new Date(userResponse.dob).toISOString() : null;
+        const dobDate = parseFlexibleDate(userResponse.dob);
+        const formattedDob = dobDate ? dobDate.toISOString() : null;
         
         // Return complete user details
         res.status(200).json({

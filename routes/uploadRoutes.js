@@ -6,6 +6,8 @@ import {
     getImageInfo,
     updateProfilePicture 
 } from '../controller/uploadController.js';
+import { updateEmployeeDocuments } from '../controller/employeeController.js';
+
 import { 
     uploadSingle, 
     uploadMultiple, 
@@ -29,5 +31,7 @@ router.delete('/:publicId', authenticateToken, deleteImage);
 
 // Get image info (public route - no authentication required)
 router.get('/info/:publicId', getImageInfo);
+
+router.post('/employee/:id/documents',authenticateToken,uploadMultiple,updateEmployeeDocuments)
 
 export default router;

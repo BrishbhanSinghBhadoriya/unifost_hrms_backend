@@ -15,42 +15,82 @@ const UserSchema = new mongoose.Schema({
     
     // Personal Information
     name: { type: String, required: true },
+    fatherName:{type:String,default:""},
+    bloodGroup:{type:String,default:""},
     email: { type: String, required: true, unique: true },
-    phone: { type: String, required: true },
-    address: { type: String },
-    city: { type: String },
-    state: { type: String },
-    zip: { type: String },
-    country: { type: String, default: "India" },
-    dob: { type: String },  
+    phone: { type: Number, required: true },
+    address: {
+        street: { type: String, default: "" },   
+        city: { type: String, default: "" },
+        state: { type: String, default: "" },
+        zip: { type: String, default: "" },
+        country: { type: String, default: "India" }
+      },
+      
+    dob: { type: String, default: "" },  
     gender: { type: String, enum: ["male", "female", "other"], default: "male" },
-    profilePicture: { type: String },
+    profilePicture: { type: String, default: "" },
+    professionalEmailId:{type:String, default: ""},
+    emergencyContactNo:{type:Number, default: ""},
+
     
     // Employment Information
     employeeId: { type: String, required: true, unique: true },
-    joiningDate: { type: Date },
-    salary: { type: Number },
-    experience: { type: Number },
-    education: { type: String },
+    joiningDate: { type: Date, default: null },
+    experience: [
+        {
+          company: { type: String, required: true,default:" " },
+          designation: { type: String, required: true,default:" " },
+          startDate: { type: Date, default: null },
+          endDate: { type: Date, default: null }, 
+          description: { type: String, default: "" } 
+        }
+      ],
+      
+      education: [
+        {
+          degree: { type: String, required: true },   
+          institution: { type: String, default: "" }, 
+          fieldOfStudy: { type: String, default: "" },
+          startDate: { type: Date },
+          endDate: { type: Date },
+          grade: { type: String, default: "" }        
+        }
+      ],
+      
     
     // Bank Information
-    bankName: { type: String },
-    bankAccountNumber: { type: String },
-    bankAccountType: { type: String, enum: ["savings", "current"], default: "savings" },
-    bankIFSC: { type: String },
-    bankAccountHolderName: { type: String },
-    
+    bankDetails: [
+        {
+          bankName: { type: String, required: true },
+          bankAccountNumber: { type: String, required: true },
+          bankAccountType: { type: String, enum: ["savings", "current"], default: "savings" },
+          bankIFSC: { type: String, required: true },
+          bankAccountHolderName: { type: String, required: true },
+         
+        }
+      ],
+      
     // Work Details
     department: { type: String, enum: ["IT", "HR", "Marketing", "Sales", "Other"], default: "IT", required: true },
-    designation: { type: String, required: true },
+    designation: { type: String, required: true  },
+    jobType:{type:String,enum:["FULL TIME" ,"INTERN","FREELANCE"]},
+    workMode:{type:String,default:" "},
+    lastLogin: { type: Date, default: Date.now },
     
-    // Additional Fields
-    skills: [String],
-    certifications: [String],
-    achievements: [String],
-    notes: String,
-    lastLogin: { type: Date, default: Date.now }
-    
+    reportingTo: { 
+        type: String,
+        trim: true
+    },
+    documents:{
+        adharImage: { type: String, default: "" },
+        panImage: { type: String, default: "" },
+        experienceLetterImage: { type: String, default: "" },
+        MarksheetImage_10: { type: String, default: "" },
+        MarksheetImage_12: { type: String, default: "" },
+        MarksheetImage_Graduation: { type: String, default: "" },
+        MarksheetImage_PostGraduationImage: { type: String, default: "" }
+}
 }, { timestamps: true });
 
 const User = mongoose.model("User", UserSchema);

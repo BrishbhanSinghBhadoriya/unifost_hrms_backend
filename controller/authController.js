@@ -157,7 +157,7 @@ export const login = async (req, res) => {
             employeeId: user.employeeId
         }, process.env.JWT_SECRET, { expiresIn: '24h' });
         
-        // Remove password from response
+        console.log(user)
         const userResponse = user.toObject();
         delete userResponse.password;
         
@@ -169,61 +169,7 @@ export const login = async (req, res) => {
             status: "success",
             message: "Login successful",
             token: token,
-            user: {
-                // Basic Info
-                _id: userResponse._id,
-                username: userResponse.username,
-                role: userResponse.role,
-                
-                // Status Flags
-                isAdmin: userResponse.isAdmin,
-                isManager: userResponse.isManager,
-                isHR: userResponse.isHR,
-                isEmployee: userResponse.isEmployee,
-                isActive: userResponse.isActive,
-                
-                // Personal Information
-                name: userResponse.name,
-                email: userResponse.email,
-                phone: userResponse.phone,
-                address: userResponse.address,
-                city: userResponse.city,
-                state: userResponse.state,
-                zip: userResponse.zip,
-                country: userResponse.country,
-                dob: formattedDob,
-                gender: userResponse.gender,
-                profilePicture: userResponse.profilePicture,
-                
-                // Employment Information
-                employeeId: userResponse.employeeId,
-                joiningDate: userResponse.joiningDate,
-                salary: userResponse.salary,
-                experience: userResponse.experience,
-                education: userResponse.education,
-                
-                // Bank Information
-                bankName: userResponse.bankName,
-                bankAccountNumber: userResponse.bankAccountNumber,
-                bankAccountType: userResponse.bankAccountType,
-                bankIFSC: userResponse.bankIFSC,
-                bankAccountHolderName: userResponse.bankAccountHolderName,
-                
-                // Work Details
-                department: userResponse.department,
-                designation: userResponse.designation,
-                
-                // Additional Fields
-                skills: userResponse.skills,
-                certifications: userResponse.certifications,
-                achievements: userResponse.achievements,
-                notes: userResponse.notes,
-                lastLogin: userResponse.lastLogin,
-                
-                // Timestamps
-                createdAt: userResponse.createdAt,
-                updatedAt: userResponse.updatedAt
-            }
+            user
         });
         
     } catch (error) {

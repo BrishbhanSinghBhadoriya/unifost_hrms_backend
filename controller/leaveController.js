@@ -121,9 +121,10 @@ export const listAllLeaves = async (req, res) => {
 export const approveLeave = async (req, res) => {
 	try {
 		const requester = req.user;
-		if (!requester || requester.role !== "admin") {
-			return res.status(403).json({ status: "error", message: "Admin only" });
-		}
+		if (!requester || !["admin", "manager", "hr"].includes(requester.role)) {
+			return res.status(403).json({ status: "error", message: "Only Admin, Manager or HR allowed" });
+		  }
+		  
 		const { id } = req.params;
 		const leave = await EmployeeLeave.findByIdAndUpdate(id, { status: "approved" }, { new: true });
 		return res.status(200).json({ status: "success", leave });

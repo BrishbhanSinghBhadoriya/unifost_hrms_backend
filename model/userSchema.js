@@ -27,7 +27,7 @@ const UserSchema = new mongoose.Schema({
         country: { type: String, default: "India" }
       },
       
-    dob: { type: String, default: "" },  
+    dob: { type: Date, default: "" },  
     gender: { type: String, enum: ["male", "female", "other"], default: "male" },
     profilePicture: { type: String, default: "" },
     professionalEmailId:{type:String, default: ""},
@@ -80,9 +80,12 @@ const UserSchema = new mongoose.Schema({
     
     reportingTo: { 
         type: String,
-        trim: true
+        trim: true,
+        default:" "
     },
     documents:{
+        adharNumber:{type:String,default:""},
+        panNumber:{type:String,default:""},
         adharImage: { type: String, default: "" },
         panImage: { type: String, default: "" },
         experienceLetterImage: { type: String, default: "" },

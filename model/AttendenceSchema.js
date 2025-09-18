@@ -6,7 +6,7 @@ const AttendanceSchema = new mongoose.Schema({
     checkIn: String,
     checkOut: String,
     hoursWorked: Number,
-    status: { type: String, enum: ["Present", "Absent", "Leave", "Holiday"], default: "Present" }
+    status: { type: String, enum: ["present", "absent", "leave", "holiday"], default: "present" }
   });
   const Attendance = mongoose.model("Attendance", AttendanceSchema);
   export default Attendance;

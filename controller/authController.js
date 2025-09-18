@@ -19,7 +19,7 @@ const parseFlexibleDate = (value) => {
         const d = parseInt(m[1], 10);
         const mo = parseInt(m[2], 10) - 1;
         let y = parseInt(m[3], 10);
-        if (y < 100) y += 2000; // handle 2-digit year
+        if (y < 100) y += 2000; 
         const dt = new Date(y, mo, d);
         return isNaN(dt.getTime()) ? null : dt;
     }
@@ -39,24 +39,25 @@ export const register = async (req, res) => {
         employeeId, 
         department, 
         designation,
-        dob
+        dob,
+        joiningDate,
     } = req.body;
+    console.log(req.body);
     
     // Check required fields
-    if(!username || !password || !name || !phone || !email || !role || !employeeId || !department || !designation) {
+    if(!username || !password || !name || !phone || !email || !role || !department || !designation) {
         return res.status(400).json({ 
             message: "All required fields are missing",
-            required: ["username", "password", "name", "phone", "email", "role", "employeeId", "department", "designation"]
+            required: ["username", "password", "name", "phone", "email", "role", "department", "designation"]
         });
     }
     
     try {
-        // Check if user already exists
+        // Check if user already exists by username/email
         const existingUser = await User.findOne({ 
             $or: [
                 { username }, 
-                { email }, 
-                { employeeId }
+                { email }
             ]
         });
         
@@ -69,6 +70,37 @@ export const register = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         
+        // Generate employeeId if not provided
+        let finalEmployeeId = employeeId;
+        const prefix = "UF";
+        const pad = (num) => (num < 10 ? `0${num}` : `${num}`);
+        if (!finalEmployeeId || typeof finalEmployeeId !== "string" || finalEmployeeId.trim().length === 0) {
+            let counter = await User.countDocuments({}) + 1;
+            // Ensure uniqueness in case of concurrent creates or deleted users
+            // Try increasing numbers until we find a free one
+            // Format: UNI01, UNI02, ... UNI10, etc.
+            // If more than 99, it will naturally be UNI100, UNI101, ...
+            // Avoid infinite loop with a sane cap
+            for (let attempts = 0; attempts < 10000; attempts++) {
+                const candidate = `${prefix}${pad(counter)}`;
+                const exists = await User.exists({ employeeId: candidate });
+                if (!exists) {
+                    finalEmployeeId = candidate;
+                    break;
+                }
+                counter++;
+            }
+            if (!finalEmployeeId) {
+                return res.status(500).json({ message: "Failed to generate unique employeeId" });
+            }
+        } else {
+            // If provided explicitly, ensure not taken
+            const empExists = await User.exists({ employeeId: finalEmployeeId });
+            if (empExists) {
+                return res.status(400).json({ message: "Provided employeeId already in use" });
+            }
+        }
+
         // Prepare user payload
         const payload = { 
             username, 
@@ -77,21 +109,25 @@ export const register = async (req, res) => {
             phone, 
             email, 
             role, 
-            employeeId, 
+            employeeId: finalEmployeeId, 
             department, 
-            designation 
+            designation ,
+            dob,
+            joiningDate,
         };
         const parsedDob = parseFlexibleDate(dob);
         if (parsedDob) {
             payload.dob = parsedDob;
         }
+        const parsedJoiningDate = parseFlexibleDate(joiningDate);
+        if (parsedJoiningDate) {
+            payload.joiningDate = parsedJoiningDate;
+        }
 
-        // Create new user
         const user = new User(payload);
 
         await user.save();
         
-        // Remove password from response
         const userResponse = user.toObject();
         delete userResponse.password;
         

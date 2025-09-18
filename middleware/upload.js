@@ -37,6 +37,9 @@ export const uploadSingle = upload.single('image');
 // Middleware for multiple images upload
 export const uploadMultiple = upload.array('images', 5); // Max 5 images
 
+// Middleware to accept any field name (single or multiple)
+export const uploadAny = upload.any();
+
 // Error handling middleware
 export const handleUploadError = (error, req, res, next) => {
     if (error instanceof multer.MulterError) {

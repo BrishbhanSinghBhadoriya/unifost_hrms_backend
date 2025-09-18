@@ -22,7 +22,7 @@ export const markAttendance = async (req, res) => {
             checkIn: checkIn ? new Date(checkIn) : null,
             checkOut: checkOut ? new Date(checkOut) : null,
             hoursWorked,
-            status: status || "Present"
+            status: status || "present"
         });
         await newAttendance.save();
         return res.status(201).json({ status: "success", message: "Attendance marked successfully", attendance: newAttendance });
@@ -55,8 +55,8 @@ export const updateAttendance = async (req, res) => {
         checkOut:checkOut ,
         date:date 
         }, { new: true });
-        console.log(attendance);
-        console.log(employeeName,status,date,checkIn,checkOut);
+        // console.log(attendance);
+        // console.log(employeeName,status,date,checkIn,checkOut);
         return res.status(200).json({ status: "success", attendance,message: "Attendance updated successfully" });
     }
     catch (error) {
@@ -125,7 +125,7 @@ export const markBulkAttendance = async (req, res) => {
                 checkIn: checkInDate,
                 checkOut: checkOutDate,
                 hoursWorked,
-                status: status || "Present"
+                status: status || "present"
             });
             await doc.save();
             results.push({ employeeId, name: user.name, status: "created", id: doc._id });
@@ -145,4 +145,5 @@ export const markBulkAttendance = async (req, res) => {
 };
 
 export default getAttendance;
+
 

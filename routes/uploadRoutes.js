@@ -6,11 +6,12 @@ import {
     getImageInfo,
     updateProfilePicture 
 } from '../controller/uploadController.js';
-import { updateEmployeeDocuments } from '../controller/employeeController.js';
+import { updateEmployeeDocuments, uploadSingleDocument } from '../controller/employeeController.js';
 
 import { 
     uploadSingle, 
     uploadMultiple, 
+    uploadAny,
     handleUploadError 
 } from '../middleware/upload.js';
 import { authenticateToken } from '../middleware/auth.js';
@@ -32,6 +33,13 @@ router.delete('/:publicId', authenticateToken, deleteImage);
 // Get image info (public route - no authentication required)
 router.get('/info/:publicId', getImageInfo);
 
-router.post('/employee/:id/documents',authenticateToken,uploadMultiple,updateEmployeeDocuments)
+
+router.post('/document/single/:id', authenticateToken, uploadAny, handleUploadError, uploadSingleDocument);
+
+
+router.post('/document/:id', authenticateToken, uploadAny, handleUploadError, updateEmployeeDocuments);
+
+// Upload multiple documents for employee
+router.post('/employee/:id/documents', authenticateToken, uploadMultiple, handleUploadError, updateEmployeeDocuments);
 
 export default router;

@@ -1,7 +1,8 @@
 import { register, login, logout, getUserProfile } from "../controller/authController.js";
 import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
-import { updateEmployee } from "../controller/employeeController.js";
+import { updateEmployee,getDashboardData } from "../controller/employeeController.js";
+
 
 const router = express.Router();
 
@@ -13,5 +14,6 @@ router.post("/login", login);
 router.post("/logout", authenticateToken, logout);
 router.get("/profile", authenticateToken, getUserProfile);
 router.put("/employee/:id", authenticateToken, updateEmployee);
+router.get("/getDashboard",authenticateToken,getDashboardData)
 
 export default router;

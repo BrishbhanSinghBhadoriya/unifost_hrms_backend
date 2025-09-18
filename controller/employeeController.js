@@ -1,3 +1,4 @@
+import Attendance from "../model/AttendenceSchema.js";
 import User from "../model/userSchema.js";
 
 const documentImageUploader = {
@@ -11,6 +12,80 @@ const documentImageUploader = {
 };
 
 const allowedDocumentKeys = new Set(Object.keys(documentImageUploader));
+
+// Upload single document one by one - dedicated endpoint
+export const uploadSingleDocument = async (req, res) => {
+    try {
+        const targetUserId = req.params.id || (req.user && req.user._id);
+        
+        if (!targetUserId) {
+            console.log("ERROR: No target user ID found");
+            return res.status(400).json({ status: "error", message: "Employee id is required" });
+        }
+
+        const requester = req.user;
+        const isSelf = requester && String(requester._id) === String(targetUserId);
+        const isPrivileged = requester && ["admin", "hr", "manager"].includes(requester.role);
+        if (!isSelf && !isPrivileged) {
+            return res.status(403).json({ status: "error", message: "Not authorized to update this employee" });
+        }
+
+        // Check if file is provided
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ 
+                status: "error", 
+                message: "No file provided. Please upload a document image.",
+                allowedFields: Array.from(allowedDocumentKeys)
+            });
+        }
+
+        // Check if more than one file is provided
+        if (req.files.length > 1) {
+            return res.status(400).json({ 
+                status: "error", 
+                message: "Only one file allowed at a time. Please upload documents one by one.",
+                allowedFields: Array.from(allowedDocumentKeys)
+            });
+        }
+
+        const file = req.files[0];
+        const field = file.fieldname;
+        
+        // Validate field name
+        if (!allowedDocumentKeys.has(field)) {
+            return res.status(400).json({ 
+                status: "error", 
+                message: `Invalid field name: ${field}. Allowed fields: ${Array.from(allowedDocumentKeys).join(', ')}` 
+            });
+        }
+
+        const pathKey = documentImageUploader[field];
+        const docUpdates = {
+            [pathKey]: file.path // cloudinary url
+        };
+
+        const updated = await User.findByIdAndUpdate(
+            targetUserId,
+            { $set: docUpdates },
+            { new: true, runValidators: true }
+        ).select("-password");
+
+        if (!updated) {
+            return res.status(404).json({ status: "error", message: "Employee not found" });
+        }
+
+        return res.status(200).json({
+            status: "success",
+            message: `Document ${field} uploaded successfully`,
+            uploadedField: field,
+            documentUrl: file.path,
+            user: updated
+        });
+    } catch (error) {
+        console.error("uploadSingleDocument error:", error);
+        return res.status(500).json({ status: "error", message: "Failed to upload document", error: error.message });
+    }
+};
 
 export const updateEmployee = async (req, res) => {
     try {
@@ -78,7 +153,26 @@ export const updateEmployeeDocuments = async (req, res) => {
         }
 
         const docUpdates = {};
-        if (Array.isArray(req.files)) {
+        let uploadedField = null;
+
+        // Handle single file upload (one by one)
+        if (req.files && req.files.length === 1) {
+            const file = req.files[0];
+            const field = file.fieldname;
+            
+            if (allowedDocumentKeys.has(field)) {
+                const pathKey = documentImageUploader[field];
+                docUpdates[pathKey] = file.path; // cloudinary url
+                uploadedField = field;
+            } else {
+                return res.status(400).json({ 
+                    status: "error", 
+                    message: `Invalid field name: ${field}. Allowed fields: ${Array.from(allowedDocumentKeys).join(', ')}` 
+                });
+            }
+        }
+        // Handle multiple files upload
+        else if (Array.isArray(req.files) && req.files.length > 1) {
             for (const file of req.files) {
                 const field = file.fieldname;
                 if (allowedDocumentKeys.has(field)) {
@@ -86,27 +180,24 @@ export const updateEmployeeDocuments = async (req, res) => {
                     docUpdates[pathKey] = file.path; // cloudinary url
                 }
             }
-        } else if (req.files && typeof req.files === 'object') {
-            for (const [field, files] of Object.entries(req.files)) {
-                if (!allowedDocumentKeys.has(field)) continue;
-                const f = Array.isArray(files) ? files[0] : files;
-                if (f && f.path) {
-                    const pathKey = documentImageUploader[field];
-                    docUpdates[pathKey] = f.path;
+        }
+        // Handle direct URL strings in body
+        else {
+            for (const key of allowedDocumentKeys) {
+                if (typeof req.body?.[key] === 'string' && req.body[key].length > 0) {
+                    const pathKey = documentImageUploader[key];
+                    docUpdates[pathKey] = req.body[key];
+                    uploadedField = key;
                 }
             }
         }
 
-        // Build updates from direct URL strings in body
-        for (const key of allowedDocumentKeys) {
-            if (typeof req.body?.[key] === 'string' && req.body[key].length > 0) {
-                const pathKey = documentImageUploader[key];
-                docUpdates[pathKey] = req.body[key];
-            }
-        }
-
         if (Object.keys(docUpdates).length === 0) {
-            return res.status(400).json({ status: "error", message: "No document fields provided" });
+            return res.status(400).json({ 
+                status: "error", 
+                message: "No document fields provided. Send file with field name or URL in body.",
+                allowedFields: Array.from(allowedDocumentKeys)
+            });
         }
 
         const updated = await User.findByIdAndUpdate(
@@ -121,7 +212,10 @@ export const updateEmployeeDocuments = async (req, res) => {
 
         return res.status(200).json({
             status: "success",
-            message: "Documents updated successfully",
+            message: uploadedField ? 
+                `Document ${uploadedField} uploaded successfully` : 
+                "Documents updated successfully",
+            uploadedField: uploadedField,
             user: updated
         });
     } catch (error) {
@@ -131,7 +225,6 @@ export const updateEmployeeDocuments = async (req, res) => {
 };
 export const getEmployee = async (req, res) => {
     try {
-      // Extract pagination parameters
       let { page, limit, sortBy, sortOrder, search, department, status } = req.query;
   
       // Set default values and validation
@@ -144,7 +237,7 @@ export const getEmployee = async (req, res) => {
       const skip = (page - 1) * limit;
   
       // Build dynamic query with search and filters
-      let query = { role: "employee" };
+      let query = {  };
   
       if (search) {
         query.$or = [
@@ -209,3 +302,96 @@ export const getEmployee = async (req, res) => {
       });
     }
   };  
+  export const getDashboardData = async (req, res) => {
+    try {
+      const targetUserId = req.params.id || (req.user && req.user._id);
+  
+      if (!targetUserId) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Employee id is required" 
+        });
+      }
+  
+      // =======================
+      // 🔹 Monthly Attendance
+      // =======================
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+  
+      const endOfMonth = new Date(startOfMonth);
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+      endOfMonth.setDate(0);
+      endOfMonth.setHours(23, 59, 59, 999);
+  
+      const monthlyRecords = await Attendance.find({
+        employeeId: targetUserId,
+        date: { $gte: startOfMonth, $lte: endOfMonth }
+      });
+  
+      const totalWorkingDays = monthlyRecords.length;
+      const presentDays = monthlyRecords.filter(r => r.status?.toLowerCase() === "present").length;
+      const absentDays = totalWorkingDays - presentDays;
+  
+      // =======================
+      // 🔹 Today's Attendance
+      // =======================
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+  
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+  
+      const todaysRecord = await Attendance.findOne({
+        employeeId: targetUserId,
+        date: { $gte: today, $lt: tomorrow }
+      });
+  
+      let todaysAttendance;
+      if (!todaysRecord) {
+        todaysAttendance = {
+          date: today,
+          status: "Absent (No check-in)",
+          checkIn: null,
+          checkOut: null,
+          hoursWorked: 0
+        };
+      } else {
+        todaysAttendance = {
+          date: todaysRecord.date,
+          status: todaysRecord.status || (todaysRecord.checkIn ? "Present" : "Absent"),
+          checkIn: todaysRecord.checkIn,
+          checkOut: todaysRecord.checkOut,
+          hoursWorked: todaysRecord.hoursWorked || 0
+        };
+      }
+  
+      // =======================
+      // 🔹 Final Response
+      // =======================
+      res.status(200).json({
+        status: "success",
+        data: {
+          monthly: {
+            totalWorkingDays,
+            presentDays,
+            absentDays,
+            attendance: monthlyRecords
+          },
+          today: todaysAttendance
+        }
+      });
+  
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      res.status(500).json({ 
+        status: "error", 
+        message: "Error fetching dashboard data", 
+        error: error.message 
+      });
+    }
+  };
+   
+  
+  

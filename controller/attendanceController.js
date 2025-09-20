@@ -2,13 +2,46 @@ import express from "express";
 import Attendance from "../model/AttendenceSchema.js";
 import User from "../model/userSchema.js";
 
+// Utility function to format hours in "X hours Y minutes" format
+const formatHours = (hours) => {
+    if (!hours || hours <= 0) return "0 hours 0 minutes";
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+    
+    // Handle edge case where minutes round up to 60
+    if (minutes === 60) {
+        return `${wholeHours + 1} hours 0 minutes`;
+    }
+    
+    return `${wholeHours} hours ${minutes} minutes`;
+};
+
+// Utility function to format hours in HH:MM format
+const formatHoursHHMM = (hours) => {
+    if (!hours || hours <= 0) return "00:00";
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+    
+    // Handle edge case where minutes round up to 60
+    if (minutes === 60) {
+        return `${(wholeHours + 1).toString().padStart(2, '0')}:00`;
+    }
+    
+    return `${wholeHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
 export const markAttendance = async (req, res) => {
     try {
-        const {employeeName, date, checkIn, checkOut, status } = req.body;
+        const {employeeName, date, checkIn, checkOut, status, profilePhoto } = req.body;
         const userId = req.params.id;
         if (!userId || !date || !employeeName) {
             return res.status(400).json({ status: "error", message: "Employee ID, date and employee name are required" });
         }
+        
+        // Always fetch user's profile photo from user schema
+        const user = await User.findById(userId).select("profilePicture");
+        const userProfilePhoto = user?.profilePicture || profilePhoto || null;
+        
         const attendanceDate = new Date(date);
         const existingRecord = await Attendance.findOne({ employeeId: userId, date: attendanceDate });
         if (existingRecord) {
@@ -18,6 +51,7 @@ export const markAttendance = async (req, res) => {
         const newAttendance = new Attendance({
             employeeId: userId,
             employeeName,
+            profilePhoto: userProfilePhoto,
             date: attendanceDate,
             checkIn: checkIn ? new Date(checkIn) : null,
             checkOut: checkOut ? new Date(checkOut) : null,
@@ -25,7 +59,19 @@ export const markAttendance = async (req, res) => {
             status: status || "present"
         });
         await newAttendance.save();
-        return res.status(201).json({ status: "success", message: "Attendance marked successfully", attendance: newAttendance });
+        
+        // Add formatted hours to response
+        const responseAttendance = {
+            ...newAttendance.toObject(),
+            formattedHours: formatHours(hoursWorked),
+            formattedHoursHHMM: formatHoursHHMM(hoursWorked)
+        };
+        
+        return res.status(201).json({ 
+            status: "success", 
+            message: "Attendance marked successfully", 
+            attendance: responseAttendance 
+        });
     } catch (error) {
         console.error("markAttendance error:", error);
         return res.status(500).json({ status: "error", message: "Failed to mark attendance", error: error.message });
@@ -44,11 +90,25 @@ const getAttendance = async (req, res) => {
         // HR ya admin ko filter empty chhod do → sabka attendance milega
 
         const records = await Attendance.find(filter)
-            .populate("employeeId", "name email");
+            .populate("employeeId", "name email profilePicture");
+
+        // Add formatted hours to each record and ensure profile photo is available
+        const recordsWithFormattedHours = records.map(record => {
+            const recordObj = record.toObject();
+            // Use profile photo from attendance record or fallback to user's profile picture
+            const profilePhoto = recordObj.profilePhoto || recordObj.employeeId?.profilePicture || null;
+            
+            return {
+                ...recordObj,
+                profilePhoto,
+                formattedHours: formatHours(record.hoursWorked),
+                formattedHoursHHMM: formatHoursHHMM(record.hoursWorked)
+            };
+        });
 
         return res.status(200).json({ 
             status: "success", 
-            attendance: records 
+            attendance: recordsWithFormattedHours 
         });
 
     } catch (error) {
@@ -62,24 +122,83 @@ const getAttendance = async (req, res) => {
 };
 export const updateAttendance = async (req, res) => {
     try {
-        
         const {id } = req.params;
-
-        console.log(id);
+        const {employeeName, status, date, checkIn, checkOut, profilePhoto } = req.body;
         
-        const {employeeName,status,date,checkIn,checkOut } = req.body;
-        const attendance = await Attendance.findByIdAndUpdate(id, { employeeName,status,
-        checkIn:checkIn ,
-        checkOut:checkOut ,
-        date:date 
-        }, { new: true });
-        // console.log(attendance);
-        // console.log(employeeName,status,date,checkIn,checkOut);
-        return res.status(200).json({ status: "success", attendance,message: "Attendance updated successfully" });
+        // Get current attendance record to fetch employeeId
+        const currentAttendance = await Attendance.findById(id);
+        if (!currentAttendance) {
+            return res.status(404).json({ 
+                status: "error", 
+                message: "Attendance record not found" 
+            });
+        }
+        
+        // Fetch user's profile photo from user schema
+        const user = await User.findById(currentAttendance.employeeId).select("profilePicture");
+        const userProfilePhoto = user?.profilePicture || profilePhoto || null;
+        
+        // Calculate work hours if both checkIn and checkOut are provided
+        let hoursWorked = 0;
+        if (checkIn && checkOut) {
+            const checkInTime = new Date(checkIn);
+            const checkOutTime = new Date(checkOut);
+            
+            // Validate that checkOut is after checkIn
+            if (checkOutTime <= checkInTime) {
+                return res.status(400).json({ 
+                    status: "error", 
+                    message: "Check-out time must be after check-in time" 
+                });
+            }
+            
+            hoursWorked = (checkOutTime - checkInTime) / 36e5; // Convert milliseconds to hours
+        }
+        
+        const updateData = {
+            employeeName,
+            status,
+            date: date ? new Date(date) : undefined,
+            checkIn: checkIn ? new Date(checkIn) : undefined,
+            checkOut: checkOut ? new Date(checkOut) : undefined,
+            profilePhoto: userProfilePhoto,
+            hoursWorked
+        };
+        
+        // Remove undefined values
+        Object.keys(updateData).forEach(key => 
+            updateData[key] === undefined && delete updateData[key]
+        );
+        
+        const attendance = await Attendance.findByIdAndUpdate(id, updateData, { new: true });
+        
+        if (!attendance) {
+            return res.status(404).json({ 
+                status: "error", 
+                message: "Attendance record not found" 
+            });
+        }
+        
+        // Add formatted hours to response
+        const responseAttendance = {
+            ...attendance.toObject(),
+            formattedHours: formatHours(hoursWorked),
+            formattedHoursHHMM: formatHoursHHMM(hoursWorked)
+        };
+        
+        return res.status(200).json({ 
+            status: "success", 
+            attendance: responseAttendance, 
+            message: "Attendance updated successfully" 
+        });
     }
     catch (error) {
         console.error("updateAttendance error:", error);
-        return res.status(500).json({ status: "error", message: "Failed to update attendance", error: error.message });
+        return res.status(500).json({ 
+            status: "error", 
+            message: "Failed to update attendance", 
+            error: error.message 
+        });
     }
 };
 export const deleteAttendance = async (req, res) => {
@@ -123,7 +242,7 @@ export const markBulkAttendance = async (req, res) => {
 
         for (const emp of employeeIds) {
             const employeeId = emp.id;
-            const user = await User.findById(employeeId).select("name");
+            const user = await User.findById(employeeId).select("name profilePicture");
             if (!user) {
                 results.push({ employeeId, status: "skipped", reason: "user not found" });
                 skippedCount++;
@@ -139,6 +258,7 @@ export const markBulkAttendance = async (req, res) => {
             const doc = new Attendance({
                 employeeId,
                 employeeName: user.name,
+                profilePhoto: user.profilePicture || null,
                 date: attendanceDate,
                 checkIn: checkInDate,
                 checkOut: checkOutDate,
@@ -146,7 +266,15 @@ export const markBulkAttendance = async (req, res) => {
                 status: status || "present"
             });
             await doc.save();
-            results.push({ employeeId, name: user.name, status: "created", id: doc._id });
+            results.push({ 
+                employeeId, 
+                name: user.name, 
+                status: "created", 
+                id: doc._id,
+                hoursWorked: doc.hoursWorked,
+                formattedHours: formatHours(doc.hoursWorked),
+                formattedHoursHHMM: formatHoursHHMM(doc.hoursWorked)
+            });
             createdCount++;
         }
 

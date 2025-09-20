@@ -2,6 +2,7 @@ import User from "../model/userSchema.js";
 import Leave from "../model/LeaveSchema.js";
 import Attendance from "../model/AttendenceSchema.js";
 import EmployeeLeave from "../model/EmployeeLeaveSchema.js";
+import Announcement from "../model/AnnouncementSchema.js";
 
 
 export const getEmployee = async (req, res) => {
@@ -176,3 +177,61 @@ export const getHrDashboardWithAttendance = async (req, res) => {
     }
   };
   
+  export const createAnnouncement = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "User id is required"
+            });
+        }
+
+        const { subject, audience, publishedDate, expiryDate, body, image, document } = req.body;
+
+        if (!subject || !audience || !publishedDate || !expiryDate || !body) {
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            });
+        }
+
+        // Create announcement
+        const newAnnouncement = new Announcement({
+            user: userId,
+            subject,
+            audience,
+            publishedDate: new Date(publishedDate),
+            expiryDate: new Date(expiryDate),
+            body,
+            image: image || null,       // optional
+            document: document || null, // optional
+        });
+
+        await newAnnouncement.save();
+
+        return res.status(201).json({
+            success: true,
+            message: "Announcement created successfully",
+            data: newAnnouncement
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error",
+            error: error.message
+        });
+    }
+};
+
+  
+  export const getAnnouncement=async(req,res)=>{
+    const announcement=await Announcement.find();
+    res.status(200).json({
+      success: true,
+      announcement,
+      message: "Announcement fetched successfully"
+    });
+  }

@@ -2,7 +2,7 @@ import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
 import { getEmployee } from "../controller/employeeController.js";
 import getAttendance, { markAttendance,updateAttendance,deleteAttendance, markBulkAttendance } from "../controller/attendanceController.js";
-import {getHrDashboardWithAttendance} from "../controller/hrController.js"
+import {createAnnouncement, getAnnouncement, getHrDashboardWithAttendance} from "../controller/hrController.js"
 import {getUpcomingLeave} from "../controller/hrController.js"
 
 const hrRouter = express.Router();
@@ -15,5 +15,7 @@ hrRouter.put('/updateAttendance/:id',authenticateToken,updateAttendance)
 hrRouter.delete('/deleteAttendance/:id',authenticateToken,deleteAttendance)
 hrRouter.get('/getHrDashboardWithAttendance',authenticateToken,getHrDashboardWithAttendance)
 hrRouter.get('/getupcomingLeaves',authenticateToken,getUpcomingLeave)
+hrRouter.post('/createAnnouncement',authenticateToken,createAnnouncement)
+hrRouter.get('/getAnnouncement',authenticateToken,getAnnouncement)
 export default hrRouter;
 

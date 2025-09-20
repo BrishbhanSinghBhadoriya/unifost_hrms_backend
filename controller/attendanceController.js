@@ -33,13 +33,31 @@ export const markAttendance = async (req, res) => {
 };
 const getAttendance = async (req, res) => {
     try {
-        const { employeeId } = req.query;
-        const filter = employeeId ? { employeeId } : {};
-        const records = await Attendance.find(filter).populate("employeeId", "name email");
-        return res.status(200).json({ status: "success", attendance: records });
+        const userId = req.user._id;
+        const userRole = req.user.role; // assume 'employee' or 'hr'
+
+        let filter = {};
+        if (userRole === 'employee') {
+            // employee ko sirf apna record dikhaye
+            filter = { employeeId: userId };
+        } 
+        // HR ya admin ko filter empty chhod do → sabka attendance milega
+
+        const records = await Attendance.find(filter)
+            .populate("employeeId", "name email");
+
+        return res.status(200).json({ 
+            status: "success", 
+            attendance: records 
+        });
+
     } catch (error) {
         console.error("getAttendance error:", error);
-        return res.status(500).json({ status: "error", message: "Failed to fetch attendance records", error: error.message });
+        return res.status(500).json({ 
+            status: "error", 
+            message: "Failed to fetch attendance records", 
+            error: error.message 
+        });
     }   
 };
 export const updateAttendance = async (req, res) => {

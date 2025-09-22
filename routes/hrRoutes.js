@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
 import { getEmployee } from "../controller/employeeController.js";
-import getAttendance, { markAttendance,updateAttendance,deleteAttendance, markBulkAttendance } from "../controller/attendanceController.js";
+import getAttendance, { markAttendance,updateAttendance,deleteAttendance, markBulkAttendance, getTodayAttendanceSummary } from "../controller/attendanceController.js";
 import {createAnnouncement, getAnnouncement, getHrDashboardWithAttendance} from "../controller/hrController.js"
 import {getUpcomingLeave} from "../controller/hrController.js"
 
@@ -17,5 +17,6 @@ hrRouter.get('/getHrDashboardWithAttendance',authenticateToken,getHrDashboardWit
 hrRouter.get('/getupcomingLeaves',authenticateToken,getUpcomingLeave)
 hrRouter.post('/createAnnouncement',authenticateToken,createAnnouncement)
 hrRouter.get('/getAnnouncement',authenticateToken,getAnnouncement)
+hrRouter.get('/getTodayAttendanceSummary',authenticateToken,getTodayAttendanceSummary)
 export default hrRouter;
 

@@ -2,6 +2,55 @@ import express from "express";
 import Attendance from "../model/AttendenceSchema.js";
 import User from "../model/userSchema.js";
 
+// Date helpers
+const getStartOfDay = (d) => {
+    const dt = new Date(d);
+    dt.setHours(0, 0, 0, 0);
+    return dt;
+};
+const getEndOfDay = (d) => {
+    const dt = new Date(d);
+    dt.setHours(23, 59, 59, 999);
+    return dt;
+};
+
+// Safe parser for optional date inputs from request bodies
+// undefined → undefined (no change); "" or null → null (clear); invalid → throws
+const parseOptionalDate = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    const dt = new Date(value);
+    if (isNaN(dt.getTime())) {
+        throw new Error("Invalid Date");
+    }
+    return dt;
+};
+
+// Parse time strings like "HH:mm" or "HH:mm:ss" by combining with a base date
+// If value is a time-only string, baseDate is required (will be used with local time)
+const parseOptionalTimeOrDate = (value, baseDateForTime) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    if (typeof value === "string") {
+        const timeMatch = value.match(/^([0-1]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+        if (timeMatch) {
+            const base = baseDateForTime ? new Date(baseDateForTime) : new Date();
+            if (isNaN(base.getTime())) throw new Error("Invalid Date");
+            const hours = parseInt(timeMatch[1], 10);
+            const minutes = parseInt(timeMatch[2], 10);
+            const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+            base.setHours(hours, minutes, seconds, 0);
+            return base;
+        }
+    }
+    // Fallback to normal date parsing
+    const dt = new Date(value);
+    if (isNaN(dt.getTime())) {
+        throw new Error("Invalid Date");
+    }
+    return dt;
+};
+
 // Utility function to format hours in "X hours Y minutes" format
 const formatHours = (hours) => {
     if (!hours || hours <= 0) return "0 hours 0 minutes";
@@ -138,29 +187,36 @@ export const updateAttendance = async (req, res) => {
         const user = await User.findById(currentAttendance.employeeId).select("profilePicture");
         const userProfilePhoto = user?.profilePicture || profilePhoto || null;
         
-        // Calculate work hours if both checkIn and checkOut are provided
-        let hoursWorked = 0;
-        if (checkIn && checkOut) {
-            const checkInTime = new Date(checkIn);
-            const checkOutTime = new Date(checkOut);
-            
+        // Parse optional date fields safely
+        let parsedDate, parsedCheckIn, parsedCheckOut;
+        try {
+            parsedDate = date !== undefined ? getStartOfDay(date) : undefined;
+            const baseForTime = parsedDate ?? currentAttendance.date ?? new Date();
+            parsedCheckIn = parseOptionalTimeOrDate(checkIn, baseForTime);
+            parsedCheckOut = parseOptionalTimeOrDate(checkOut, baseForTime);
+        } catch (e) {
+            return res.status(400).json({ status: "error", message: e.message || "Invalid date input" });
+        }
+
+        // Calculate work hours only when both checkIn and checkOut are valid non-null
+        let hoursWorked;
+        if (parsedCheckIn instanceof Date && parsedCheckOut instanceof Date) {
             // Validate that checkOut is after checkIn
-            if (checkOutTime <= checkInTime) {
+            if (parsedCheckOut <= parsedCheckIn) {
                 return res.status(400).json({ 
                     status: "error", 
                     message: "Check-out time must be after check-in time" 
                 });
             }
-            
-            hoursWorked = (checkOutTime - checkInTime) / 36e5; // Convert milliseconds to hours
+            hoursWorked = (parsedCheckOut - parsedCheckIn) / 36e5; // ms to hours
         }
         
         const updateData = {
             employeeName,
             status,
-            date: date ? new Date(date) : undefined,
-            checkIn: checkIn ? new Date(checkIn) : undefined,
-            checkOut: checkOut ? new Date(checkOut) : undefined,
+            date: parsedDate,
+            checkIn: parsedCheckIn,
+            checkOut: parsedCheckOut,
             profilePhoto: userProfilePhoto,
             hoursWorked
         };
@@ -182,8 +238,8 @@ export const updateAttendance = async (req, res) => {
         // Add formatted hours to response
         const responseAttendance = {
             ...attendance.toObject(),
-            formattedHours: formatHours(hoursWorked),
-            formattedHoursHHMM: formatHoursHHMM(hoursWorked)
+            formattedHours: formatHours(hoursWorked ?? attendance.hoursWorked),
+            formattedHoursHHMM: formatHoursHHMM(hoursWorked ?? attendance.hoursWorked)
         };
         
         return res.status(200).json({ 
@@ -219,7 +275,7 @@ export const markBulkAttendance = async (req, res) => {
         if (!date) {
             return res.status(400).json({ status: "error", message: "date is required" });
         }
-        const attendanceDate = new Date(date);
+        const attendanceDate = getStartOfDay(date);
         const checkInDate = checkIn ? new Date(checkIn) : null;
         const checkOutDate = checkOut ? new Date(checkOut) : null;
         const hoursWorked = checkInDate && checkOutDate ? (checkOutDate - checkInDate) / 36e5 : 0;
@@ -287,6 +343,42 @@ export const markBulkAttendance = async (req, res) => {
     } catch (error) {
         console.error("markBulkAttendance error:", error);
         return res.status(500).json({ status: "error", message: "Failed to mark bulk attendance", error: error.message });
+    }
+};
+
+// Today's attendance summary (present/absent/late counts)
+export const getTodayAttendanceSummary = async (req, res) => {
+    try {
+        const now = new Date();
+        let rangeStart = getStartOfDay(now);
+        let rangeEnd = getEndOfDay(now);
+
+        const hasToday = await Attendance.exists({ date: { $gte: rangeStart, $lt: rangeEnd } });
+        if (!hasToday) {
+            const nextStart = new Date(rangeStart);
+            nextStart.setDate(nextStart.getDate() + 1);
+            const nextEnd = new Date(rangeEnd);
+            nextEnd.setDate(nextEnd.getDate() + 1);
+            rangeStart = nextStart;
+            rangeEnd = nextEnd;
+        }
+
+        const [present, absent, late,onLeave] = await Promise.all([
+            Attendance.countDocuments({ date: { $gte: rangeStart, $lt: rangeEnd }, status: { $regex: /^present$/i } }),
+            Attendance.countDocuments({ date: { $gte: rangeStart, $lt: rangeEnd }, status: { $regex: /^absent$/i } }),
+            Attendance.countDocuments({ date: { $gte: rangeStart, $lt: rangeEnd }, status: { $regex: /^late$/i } }),
+            Attendance.countDocuments({ date: { $gte: rangeStart, $lt: rangeEnd }, status: { $regex: /^leave$/i } })
+        ]);
+        console.log("Today's attendance summary", { present, absent, late });
+
+        return res.status(200).json({
+            status: "success",
+            window: { start: rangeStart, end: rangeEnd },
+            counts: { present, absent, late }
+        });
+    } catch (error) {
+        console.error("getTodayAttendanceSummary error:", error);
+        return res.status(500).json({ status: "error", message: "Failed to fetch today's attendance summary", error: error.message });
     }
 };
 

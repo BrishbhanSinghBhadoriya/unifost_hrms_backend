@@ -68,41 +68,53 @@ export const getHrDashboardWithAttendance = async (req, res) => {
           EmployeeLeave.countDocuments({ status: "pending" })
         ]);
   
-      // ================================
-      // 2. Attendance Report (Today or Next Day Fallback)
-      // ================================
+      
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-  
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-  
+today.setHours(0, 0, 0, 0);
+
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+      let rangeStart = today;
+      let rangeEnd = tomorrow;
       let attendance = await Attendance.find({
-        date: { $gte: today, $lt: tomorrow }
-      });
-  
+        date: { $gte: rangeStart, $lt: rangeEnd }
+      }).lean();
+
       if (!attendance || attendance.length === 0) {
         const nextDay = new Date(tomorrow);
         const dayAfterNext = new Date(nextDay);
         dayAfterNext.setDate(dayAfterNext.getDate() + 1);
-  
+
+        rangeStart = nextDay;
+        rangeEnd = dayAfterNext;
+
         attendance = await Attendance.find({
-          date: { $gte: nextDay, $lt: dayAfterNext }
-        });
+          date: { $gte: rangeStart, $lt: rangeEnd }
+        }).lean();
       }
-  
-      const presentCount = attendance.filter((a) => a.status === "Present").length;
-      const absentCount = attendance.filter((a) => a.status === "Absent").length;
-      const lateCount = attendance.filter((a) => a.status === "Late").length;
-  
-      
+
+      const presentCount = await Attendance.countDocuments({
+        date: { $gte: rangeStart, $lt: rangeEnd },
+        status: { $regex: /^present$/i }
+      });
+
+      const absentCount = await Attendance.countDocuments({
+        date: { $gte: rangeStart, $lt: rangeEnd },
+        status: { $regex: /^absent$/i }
+      });
+
+      const lateCount = await Attendance.countDocuments({
+        date: { $gte: rangeStart, $lt: rangeEnd },
+        status: { $regex: /^late$/i }
+      });
+      console.log("Attendance counts window", { rangeStart, rangeEnd, presentCount, absentCount, lateCount });
       const TEN_DAYS = 10;
       const usersWithDob = await User.find({ dob: { $ne: "" } })
         .select("_id name employeeId department designation dob email profilePicture")
         .lean();
         console.log(usersWithDob);
 
-      // Use UTC-normalized dates to avoid timezone off-by-one issues
       const startOfTodayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
       const upcomingBirthdays = usersWithDob
@@ -157,7 +169,7 @@ export const getHrDashboardWithAttendance = async (req, res) => {
       today.setHours(0, 0, 0, 0);
   
       const upcomingLeaves = await EmployeeLeave.find({
-        employeeRole: { $ne: "hr" }   // 👈 sirf HR ko hata diya
+        employeeRole: { $ne: "hr" }  
       }).sort({ startDate: 1 });
       
       console.log("Total Leaves Found:", upcomingLeaves.length);
@@ -204,8 +216,8 @@ export const getHrDashboardWithAttendance = async (req, res) => {
             publishedDate: new Date(publishedDate),
             expiryDate: new Date(expiryDate),
             body,
-            image: image || null,       // optional
-            document: document || null, // optional
+            image: image || null,       
+            document: document || null, 
         });
 
         await newAnnouncement.save();

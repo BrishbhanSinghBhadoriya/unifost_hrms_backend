@@ -4,13 +4,7 @@ import { createLeave, myLeaves, listAllLeaves,  approveLeave, rejectLeave } from
 
 const router = express.Router();
 
-// Create leave (logged-in users)
 router.post("/", authenticateToken, createLeave);
-
-// HR/Admin/Manager create leave for employee
-// router.post("/hr", authenticateToken, hrCreateLeave);
-
-// My leaves (logged-in users)
 router.get("/me", authenticateToken, myLeaves);
 
 // Admin/HR view all leaves

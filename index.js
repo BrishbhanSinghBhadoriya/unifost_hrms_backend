@@ -23,7 +23,7 @@ app.use("/api/leaves", leaveRoutes);
 app.use("/api/hr", hrRouter);
 
 app.get('/', (req, res) => {
-	res.send("Hello World");
+	res.send("Hello World by hrms ");
 });
 
 // Start server with fallback port

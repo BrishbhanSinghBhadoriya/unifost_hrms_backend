@@ -170,7 +170,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
   
       const upcomingLeaves = await EmployeeLeave.find({
         employeeRole: { $ne: "hr" }  
-      }).sort({ startDate: 1 });
+      }).populate("employeeId", "name email profilePicture").sort({ startDate: 1 });
       
       console.log("Total Leaves Found:", upcomingLeaves.length);
   

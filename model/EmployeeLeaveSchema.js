@@ -14,6 +14,20 @@ const EmployeeLeaveSchema = new mongoose.Schema({
 	approverNote: { type: String },
 }, { timestamps: true });
 
+const employeeSelect = "name email profilePicture employeeId department designation";
+function autopopulateEmployee(next) {
+  this.populate("employeeId", employeeSelect);
+  next();
+}
+
+EmployeeLeaveSchema.pre("find", autopopulateEmployee);
+EmployeeLeaveSchema.pre("findOne", autopopulateEmployee);
+EmployeeLeaveSchema.pre("findById", autopopulateEmployee);
+EmployeeLeaveSchema.pre("findOneAndUpdate", function(next) {
+  this.populate("employeeId", employeeSelect);
+  next();
+});
+
 // Ensure endDate >= startDate
 EmployeeLeaveSchema.pre("validate", function(next) {
 	if (this.startDate && this.endDate && this.endDate < this.startDate) {

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 const AttendanceSchema = new mongoose.Schema({
-    Id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     employeeName: String,
     profilePhoto: { type: String, default: null }, // URL or path to profile photo
     date: { type: Date, required: true },

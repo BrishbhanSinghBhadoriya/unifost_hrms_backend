@@ -9,5 +9,20 @@ const AttendanceSchema = new mongoose.Schema({
     hoursWorked: { type: Number, default: 0 },
     status: { type: String, enum: ["present", "absent", "leave", "holiday"], default: "present" }
   });
+
+// Auto-populate employeeId with selected fields on common queries
+const employeeSelect = "name email profilePicture employeeId department designation";
+function autopopulateEmployee(next) {
+  this.populate("employeeId", employeeSelect);
+  next();
+}
+
+AttendanceSchema.pre("find", autopopulateEmployee);
+AttendanceSchema.pre("findOne", autopopulateEmployee);
+AttendanceSchema.pre("findById", autopopulateEmployee);
+AttendanceSchema.pre("findOneAndUpdate", function(next) {
+  this.populate("employeeId", employeeSelect);
+  next();
+});
   const Attendance = mongoose.model("Attendance", AttendanceSchema);
   export default Attendance;

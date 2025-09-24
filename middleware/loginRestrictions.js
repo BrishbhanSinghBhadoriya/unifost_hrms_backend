@@ -52,7 +52,7 @@ export const enforceLoginRestrictions = (req, res, next) => {
     if (!ALLOWED_IPS.has(clientIp)) {
       return res.status(403).json({
         status: "error",
-        message: "Login is restricted to specific IP addresses",
+        message: "Please connnect your device to the office wifi network to login",
         details: { ip: clientIp }
       });
     }

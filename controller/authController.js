@@ -2,6 +2,7 @@ import User from "../model/userSchema.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import Attendance from "../model/AttendenceSchema.js";
 dotenv.config();
 
 // Parse flexible date strings like dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, ISO
@@ -191,7 +192,7 @@ export const login = async (req, res) => {
             username: user.username,
             role: user.role,
             employeeId: user.employeeId
-        }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        }, process.env.JWT_SECRET, { });
         
         console.log(user)
         const userResponse = user.toObject();
@@ -199,11 +200,27 @@ export const login = async (req, res) => {
         
         const dobDate = parseFlexibleDate(userResponse.dob);
         const formattedDob = dobDate ? dobDate.toISOString() : null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+    
+        let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
+    
+        if (!attendance) {
+          attendance = new Attendance({
+            employeeId: user._id,
+            date: today,
+            checkIn: new Date()
+          });
+          await attendance.save();
+        } else if (!attendance.checkIn) {
+          attendance.checkIn = new Date();
+          await attendance.save();
+        }
         
         // Return complete user details
         res.status(200).json({
             status: "success",
-            message: "Login successful",
+            message: "Login successful and check-in recorded!",
             token: token,
             user
         });
@@ -236,10 +253,20 @@ export const logout = async (req, res) => {
             user.token = null;
             await user.save();
         }
+        const today = new Date();
+
+        today.setHours(0, 0, 0, 0);
+
+    const attendance = await Attendance.findOne({ employeeId: userId, date: today });
+    if (attendance && !attendance.checkOut) {
+      attendance.checkOut = new Date();
+      await attendance.save();
+    }
+
         
         res.status(200).json({ 
             status: "success",
-            message: "Logged out successfully" 
+            message: "Logout successful & check-out recorded!" 
         });
     } catch (error) {
         console.error("Logout error:", error);

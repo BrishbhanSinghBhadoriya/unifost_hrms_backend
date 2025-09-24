@@ -2,13 +2,15 @@ import { register, login, logout, getUserProfile } from "../controller/authContr
 import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
 import { updateEmployee,getDashboardData } from "../controller/employeeController.js";
+import { enforceLoginRestrictions } from "../middleware/loginRestrictions.js";
+
 
 
 const router = express.Router();
 
 // Public routes
 router.post("/register", register);
-router.post("/login", login);
+router.post("/login",enforceLoginRestrictions, login);
 
 // Protected routes (require authentication)
 router.post("/logout", authenticateToken, logout);

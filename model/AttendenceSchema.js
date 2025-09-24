@@ -7,7 +7,7 @@ const AttendanceSchema = new mongoose.Schema({
     checkIn: { type: Date, default: null },
     checkOut: { type: Date, default: null },
     hoursWorked: { type: Number, default: 0 },
-    status: { type: String, enum: ["present", "absent", "leave", "holiday"], default: "present" }
+    status: { type: String, enum: ["present", "absent", "leave", "holiday","late"], default: "present" }
   });
 
 // Auto-populate employeeId with selected fields on common queries

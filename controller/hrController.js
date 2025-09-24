@@ -1,5 +1,4 @@
 import User from "../model/userSchema.js";
-import Leave from "../model/LeaveSchema.js";
 import Attendance from "../model/AttendenceSchema.js";
 import EmployeeLeave from "../model/EmployeeLeaveSchema.js";
 import Announcement from "../model/AnnouncementSchema.js";

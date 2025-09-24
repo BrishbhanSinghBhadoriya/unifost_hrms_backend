@@ -203,19 +203,21 @@ export const login = async (req, res) => {
         const formattedDob = dobDate ? dobDate.toISOString() : null;
         const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
         console.log(today)
-let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
+        let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
 
-if (!attendance) {
-  attendance = new Attendance({
-    employeeId: user._id,
-    date: today,
-    checkIn: new Date()
-  });
-  await attendance.save();
-} else if (!attendance.checkIn) {
-  attendance.checkIn = new Date();
-  await attendance.save();
-}
+        const nowIST = moment().tz("Asia/Kolkata").toDate();
+
+        if (!attendance) {
+          attendance = new Attendance({
+            employeeId: user._id,
+            date: today,
+            checkIn: nowIST
+          });
+          await attendance.save();
+        } else if (!attendance.checkIn) {
+          attendance.checkIn = nowIST;
+          await attendance.save();
+        }
 
         
         // Return complete user details
@@ -258,6 +260,7 @@ export const logout = async (req, res) => {
         const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
 
         let attendance = await Attendance.findOne({ employeeId: userId, date: today });
+        const nowIST = moment().tz("Asia/Kolkata").toDate();
         if (!attendance) {
             // Create a record if none exists (user might have never hit login endpoint today)
             attendance = new Attendance({
@@ -268,7 +271,7 @@ export const logout = async (req, res) => {
 
         // Set checkOut if not already set
         if (!attendance.checkOut) {
-            attendance.checkOut = new Date();
+            attendance.checkOut = nowIST;
         }
 
         // Compute hoursWorked if checkIn exists

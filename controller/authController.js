@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import Attendance from "../model/AttendenceSchema.js";
+import moment from "moment-timezone";
 dotenv.config();
 
 // Parse flexible date strings like dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, ISO
@@ -200,22 +201,22 @@ export const login = async (req, res) => {
         
         const dobDate = parseFlexibleDate(userResponse.dob);
         const formattedDob = dobDate ? dobDate.toISOString() : null;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-    
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
-    
-        if (!attendance) {
-          attendance = new Attendance({
-            employeeId: user._id,
-            date: today,
-            checkIn: new Date()
-          });
-          await attendance.save();
-        } else if (!attendance.checkIn) {
-          attendance.checkIn = new Date();
-          await attendance.save();
-        }
+        const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
+        console.log(today)
+let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
+
+if (!attendance) {
+  attendance = new Attendance({
+    employeeId: user._id,
+    date: today,
+    checkIn: new Date()
+  });
+  await attendance.save();
+} else if (!attendance.checkIn) {
+  attendance.checkIn = new Date();
+  await attendance.save();
+}
+
         
         // Return complete user details
         res.status(200).json({

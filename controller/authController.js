@@ -254,15 +254,31 @@ export const logout = async (req, res) => {
             user.token = null;
             await user.save();
         }
-        const today = new Date();
+        // Normalize to same day boundary as login (Asia/Kolkata)
+        const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
 
-        today.setHours(0, 0, 0, 0);
+        let attendance = await Attendance.findOne({ employeeId: userId, date: today });
+        if (!attendance) {
+            // Create a record if none exists (user might have never hit login endpoint today)
+            attendance = new Attendance({
+                employeeId: userId,
+                date: today
+            });
+        }
 
-    const attendance = await Attendance.findOne({ employeeId: userId, date: today });
-    if (attendance && !attendance.checkOut) {
-      attendance.checkOut = new Date();
-      await attendance.save();
-    }
+        // Set checkOut if not already set
+        if (!attendance.checkOut) {
+            attendance.checkOut = new Date();
+        }
+
+        // Compute hoursWorked if checkIn exists
+        if (attendance.checkIn && attendance.checkOut) {
+            const hours = (attendance.checkOut - attendance.checkIn) / 36e5;
+            attendance.hoursWorked = hours > 0 ? hours : 0;
+            attendance.status = attendance.status || "present";
+        }
+
+        await attendance.save();
 
         
         res.status(200).json({ 

@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import Attendance from "../model/AttendenceSchema.js";
 import moment from "moment-timezone";
-import dayjs from "dayjs";
 dotenv.config();
 
 // Parse flexible date strings like dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, ISO
@@ -184,10 +183,8 @@ export const login = async (req, res) => {
             });
         }
         
-        // Use IST for timestamps
-        const nowIST = moment().tz("Asia/Kolkata");
-        // Update last login time (IST now)
-        user.lastLogin = nowIST.toDate();
+        // Update last login time
+        user.lastLogin = new Date();
         await user.save();
         
         // Generate JWT token
@@ -202,24 +199,23 @@ export const login = async (req, res) => {
         const userResponse = user.toObject();
         delete userResponse.password;
         
-       
-        // Normalize attendance date to start-of-day IST
-        const attendanceDateIST = nowIST.clone().startOf('day').toDate();
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: attendanceDateIST });
+        const dobDate = parseFlexibleDate(userResponse.dob);
+        const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
+        let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
 
-        const checkInIST = nowIST.toDate();
+        const nowIST = moment().tz("Asia/Kolkata").toDate();
 
         if (!attendance) {
           attendance = new Attendance({
             employeeId: user._id,
             employeeName: user.name,
             profilePhoto: user.profilePicture || null,
-            date: attendanceDateIST,
-            checkIn: checkInIST
+            date: today,
+            checkIn: nowIST
           });
           await attendance.save();
         } else if (!attendance.checkIn) {
-          attendance.checkIn = checkInIST;
+          attendance.checkIn = nowIST;
           await attendance.save();
         }
 
@@ -229,11 +225,7 @@ export const login = async (req, res) => {
             status: "success",
             message: "Login successful and check-in recorded!",
             token: token,
-            user: {
-                ...user.toObject(),
-                password: undefined,
-                lastLoginFormatted: user.lastLogin ? dayjs(user.lastLogin).format('DD MMM YYYY, hh:mm A') : null
-            }
+            user
         });
         
     } catch (error) {
@@ -262,10 +254,8 @@ export const logout = async (req, res) => {
         // Clear token (if you have token field in user schema)
         if (user.token) {
             user.token = null;
+            await user.save();
         }
-        // Record lastLogout timestamp
-        user.lastLogout = new Date();
-        await user.save();
         // Normalize to same day boundary as login (Asia/Kolkata)
         const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
 
@@ -296,9 +286,7 @@ export const logout = async (req, res) => {
         
         res.status(200).json({ 
             status: "success",
-            message: "Logout successful & check-out recorded!",
-            lastLogout: user.lastLogout,
-            lastLogoutFormatted: user.lastLogout ? dayjs(user.lastLogout).format('DD MMM YYYY, hh:mm A') : null
+            message: "Logout successful & check-out recorded!" 
         });
     } catch (error) {
         console.error("Logout error:", error);
@@ -383,7 +371,6 @@ export const getUserProfile = async (req, res) => {
                 achievements: userResponse.achievements,
                 notes: userResponse.notes,
                 lastLogin: userResponse.lastLogin,
-                lastLoginFormatted: userResponse.lastLogin ? dayjs(userResponse.lastLogin).format('DD MMM YYYY, hh:mm A') : null,
                 
                 // Timestamps
                 createdAt: userResponse.createdAt,

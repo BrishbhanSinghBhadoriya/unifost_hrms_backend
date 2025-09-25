@@ -199,9 +199,8 @@ export const login = async (req, res) => {
         const userResponse = user.toObject();
         delete userResponse.password;
         
-        const dobDate = parseFlexibleDate(userResponse.dob);
-        const formattedDob = dobDate ? dobDate.toISOString() : null;
-        const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
+       
+        const today = user.lastLogin;
         console.log(today)
         let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
 

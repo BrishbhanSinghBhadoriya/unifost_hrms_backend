@@ -253,8 +253,10 @@ export const logout = async (req, res) => {
         // Clear token (if you have token field in user schema)
         if (user.token) {
             user.token = null;
-            await user.save();
         }
+        // Record lastLogout timestamp
+        user.lastLogout = new Date();
+        await user.save();
         // Normalize to same day boundary as login (Asia/Kolkata)
         const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
 
@@ -285,7 +287,8 @@ export const logout = async (req, res) => {
         
         res.status(200).json({ 
             status: "success",
-            message: "Logout successful & check-out recorded!" 
+            message: "Logout successful & check-out recorded!",
+            lastLogout: user.lastLogout
         });
     } catch (error) {
         console.error("Logout error:", error);

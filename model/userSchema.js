@@ -77,6 +77,7 @@ const UserSchema = new mongoose.Schema({
     jobType:{type:String,enum:["FULL TIME" ,"INTERN","FREELANCE"]},
     workMode:{type:String,default:" "},
     lastLogin: { type: Date, default: Date.now },
+    lastLogout: { type: Date, default: null },
     
     reportingTo: { 
         type: String,

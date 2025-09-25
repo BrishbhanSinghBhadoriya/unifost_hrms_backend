@@ -81,15 +81,18 @@ const formatHoursHHMM = (hours) => {
 
 export const markAttendance = async (req, res) => {
     try {
-        const {employeeName, date, checkIn, checkOut, status, profilePhoto } = req.body;
+        const { date, checkIn, checkOut, status, profilePhoto } = req.body;
         const userId = req.params.id;
-        if (!userId || !date || !employeeName) {
-            return res.status(400).json({ status: "error", message: "Employee ID, date and employee name are required" });
+        if (!userId || !date) {
+            return res.status(400).json({ status: "error", message: "Employee ID and date are required" });
         }
         
-        // Always fetch user's profile photo from user schema
-        const user = await User.findById(userId).select("profilePicture");
-        const userProfilePhoto = user?.profilePicture || profilePhoto || null;
+        // Always fetch user's details from user schema
+        const user = await User.findById(userId).select("name employeeId profilePicture");
+        if (!user) {
+            return res.status(404).json({ status: "error", message: "Employee not found" });
+        }
+        const userProfilePhoto = user.profilePicture || profilePhoto || null;
         
         const attendanceDate = new Date(date);
         const existingRecord = await Attendance.findOne({ employeeId: userId, date: attendanceDate });
@@ -99,7 +102,7 @@ export const markAttendance = async (req, res) => {
         const hoursWorked = checkIn && checkOut ? (new Date(checkOut) - new Date(checkIn)) / 36e5 : 0;
         const newAttendance = new Attendance({
             employeeId: userId,
-            employeeName,
+            employeeName: user.name,
             profilePhoto: userProfilePhoto,
             date: attendanceDate,
             checkIn: checkIn ? new Date(checkIn) : null,
@@ -108,6 +111,7 @@ export const markAttendance = async (req, res) => {
             status: status || "present"
         });
         await newAttendance.save();
+        await newAttendance.populate("employeeId", "name employeeId profilePicture");
         
         // Add formatted hours to response
         const responseAttendance = {
@@ -139,7 +143,7 @@ const getAttendance = async (req, res) => {
         // HR ya admin ko filter empty chhod do → sabka attendance milega
 
         const records = await Attendance.find(filter)
-            .populate("employeeId", "name email profilePicture");
+            .populate("employeeId", "name employeeId email profilePicture");
 
         // Add formatted hours to each record and ensure profile photo is available
         const recordsWithFormattedHours = records.map(record => {

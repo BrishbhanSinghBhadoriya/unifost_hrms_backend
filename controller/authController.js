@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import Attendance from "../model/AttendenceSchema.js";
 import moment from "moment-timezone";
+import dayjs from "dayjs";
 dotenv.config();
 
 // Parse flexible date strings like dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, ISO
@@ -228,7 +229,11 @@ export const login = async (req, res) => {
             status: "success",
             message: "Login successful and check-in recorded!",
             token: token,
-            user
+            user: {
+                ...user.toObject(),
+                password: undefined,
+                lastLoginFormatted: user.lastLogin ? dayjs(user.lastLogin).format('DD MMM YYYY, hh:mm A') : null
+            }
         });
         
     } catch (error) {
@@ -292,7 +297,8 @@ export const logout = async (req, res) => {
         res.status(200).json({ 
             status: "success",
             message: "Logout successful & check-out recorded!",
-            lastLogout: user.lastLogout
+            lastLogout: user.lastLogout,
+            lastLogoutFormatted: user.lastLogout ? dayjs(user.lastLogout).format('DD MMM YYYY, hh:mm A') : null
         });
     } catch (error) {
         console.error("Logout error:", error);
@@ -377,6 +383,7 @@ export const getUserProfile = async (req, res) => {
                 achievements: userResponse.achievements,
                 notes: userResponse.notes,
                 lastLogin: userResponse.lastLogin,
+                lastLoginFormatted: userResponse.lastLogin ? dayjs(userResponse.lastLogin).format('DD MMM YYYY, hh:mm A') : null,
                 
                 // Timestamps
                 createdAt: userResponse.createdAt,

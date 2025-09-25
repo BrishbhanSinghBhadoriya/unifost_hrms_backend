@@ -183,8 +183,10 @@ export const login = async (req, res) => {
             });
         }
         
-        // Update last login time
-        user.lastLogin = new Date();
+        // Use IST for timestamps
+        const nowIST = moment().tz("Asia/Kolkata");
+        // Update last login time (IST now)
+        user.lastLogin = nowIST.toDate();
         await user.save();
         
         // Generate JWT token
@@ -200,21 +202,23 @@ export const login = async (req, res) => {
         delete userResponse.password;
         
        
-        const today = user.lastLogin;
-        console.log(today)
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
+        // Normalize attendance date to start-of-day IST
+        const attendanceDateIST = nowIST.clone().startOf('day').toDate();
+        let attendance = await Attendance.findOne({ employeeId: user._id, date: attendanceDateIST });
 
-        const nowIST = moment().tz("Asia/Kolkata").toDate();
+        const checkInIST = nowIST.toDate();
 
         if (!attendance) {
           attendance = new Attendance({
             employeeId: user._id,
-            date: today,
-            checkIn: nowIST
+            employeeName: user.name,
+            profilePhoto: user.profilePicture || null,
+            date: attendanceDateIST,
+            checkIn: checkInIST
           });
           await attendance.save();
         } else if (!attendance.checkIn) {
-          attendance.checkIn = nowIST;
+          attendance.checkIn = checkInIST;
           await attendance.save();
         }
 

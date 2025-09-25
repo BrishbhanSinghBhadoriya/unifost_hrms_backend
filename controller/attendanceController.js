@@ -3,6 +3,21 @@ import Attendance from "../model/AttendenceSchema.js";
 import User from "../model/userSchema.js";
 
 // Date helpers
+const formatIST = (d) => {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return null;
+    const opts = {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    };
+    // returns like 25/09/2025, 18:53:12
+    return d.toLocaleString("en-GB", opts);
+};
 const getStartOfDay = (d) => {
     const dt = new Date(d);
     dt.setHours(0, 0, 0, 0);
@@ -116,6 +131,9 @@ export const markAttendance = async (req, res) => {
         // Add formatted hours to response
         const responseAttendance = {
             ...newAttendance.toObject(),
+            dateIST: formatIST(newAttendance.date),
+            checkInIST: formatIST(newAttendance.checkIn),
+            checkOutIST: formatIST(newAttendance.checkOut),
             formattedHours: formatHours(hoursWorked),
             formattedHoursHHMM: formatHoursHHMM(hoursWorked)
         };
@@ -154,6 +172,9 @@ const getAttendance = async (req, res) => {
             return {
                 ...recordObj,
                 profilePhoto,
+                dateIST: formatIST(recordObj.date),
+                checkInIST: formatIST(recordObj.checkIn),
+                checkOutIST: formatIST(recordObj.checkOut),
                 formattedHours: formatHours(record.hoursWorked),
                 formattedHoursHHMM: formatHoursHHMM(record.hoursWorked)
             };

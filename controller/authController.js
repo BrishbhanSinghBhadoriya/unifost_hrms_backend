@@ -201,19 +201,19 @@ export const login = async (req, res) => {
 
         const nowIST = moment().tz("Asia/Kolkata");
 
-// Create Date object using components
-const istDate = new Date(
-  nowIST.year(),
-  nowIST.month(),      // 0-based
-  nowIST.date(),
-  nowIST.hour(),
-  nowIST.minute(),
-  nowIST.second(),
-  nowIST.millisecond()
-);
+        // Create Date object using components
+        const istDate = new Date(
+            nowIST.year(),
+            nowIST.month(),      // 0-based
+            nowIST.date(),
+            nowIST.hour(),
+            nowIST.minute(),
+            nowIST.second(),
+            nowIST.millisecond()
+        );
 
-console.log(istDate);
-        let attendance = await Attendance.findOne({ employeeId: user._id, date:istDate });
+        console.log(istDate);
+        let attendance = await Attendance.findOne({ employeeId: user._id, date: istDate });
 
 
         if (!attendance) {
@@ -263,28 +263,33 @@ export const logout = async (req, res) => {
         }
 
         // Clear token (if you have token field in user schema)
-        if (user.token) {
-            user.token = null;
-            await user.save();
-        }
+
         // Normalize to same day boundary as login (Asia/Kolkata)
-        const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
+        const todayStart = moment().tz("Asia/Kolkata").startOf('day').toDate();
+        const todayEnd = moment().tz("Asia/Kolkata").endOf('day').toDate();
 
-        let attendance = await Attendance.findOne({ employeeId: userId, date: today });
-        const nowIST = moment().tz("Asia/Kolkata").toDate();
+         let attendance = await Attendance.findOne({
+            employeeId: userId, date: { $gte: todayStart, $lte: todayEnd }
+        });
+        
         if (!attendance) {
-            // Create a record if none exists (user might have never hit login endpoint today)
-            attendance = new Attendance({
-                employeeId: userId,
-                date: today
-            });
+            res.status(404).json({
+                sucess: "false",
+                message: "Attendance is Empty !"
+            })
         }
-
+        console.log(attendance)
         // Set checkOut if not already set
-        if (!attendance.checkOut) {
-            attendance.checkOut = nowIST;
-        }
-
+        
+        // Check if checkout is not already done
+if (attendance.checkOut || !attendance.checkout) {
+    const nowIST = moment().tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ss.SSS");
+    console.log("IST Time:", nowIST); // 2025-09-27T16:18:25.362
+    
+    // IST time se Date object banayein
+    attendance.checkOut = nowIST;
+}
+console.log("Checkout stored:", attendance.checkOut);
         // Compute hoursWorked if checkIn exists
         if (attendance.checkIn && attendance.checkOut) {
             const hours = (attendance.checkOut - attendance.checkIn) / 36e5;
@@ -293,11 +298,15 @@ export const logout = async (req, res) => {
         }
 
         await attendance.save();
+        if (user.token) {
+            user.token = null;
+            await user.save();
+        }
 
 
         res.status(200).json({
             status: "success",
-            message: "Logout successful & check-out recorded!"
+            message: "Logout successful & check-out recorded!!!"
         });
     } catch (error) {
         console.error("Logout error:", error);

@@ -200,18 +200,20 @@ export const login = async (req, res) => {
         delete userResponse.password;
 
         const nowIST = moment().tz("Asia/Kolkata");
-        const istDate = new Date(
-            nowIST.year(),
-            nowIST.month(), // month 0-indexed
-            nowIST.date(),
-            nowIST.hour(),
-            nowIST.minute(),
-            nowIST.second(),
-            nowIST.millisecond()
-        );
-        
 
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
+// Create Date object using components
+const istDate = new Date(
+  nowIST.year(),
+  nowIST.month(),      // 0-based
+  nowIST.date(),
+  nowIST.hour(),
+  nowIST.minute(),
+  nowIST.second(),
+  nowIST.millisecond()
+);
+
+console.log(istDate);
+        let attendance = await Attendance.findOne({ employeeId: user._id, date:istDate });
 
 
         if (!attendance) {

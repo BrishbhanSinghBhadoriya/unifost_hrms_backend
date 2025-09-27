@@ -282,7 +282,7 @@ export const logout = async (req, res) => {
         // Set checkOut if not already set
         
         // Check if checkout is not already done
-if (attendance.checkOut || !attendance.checkout) {
+if (!attendance.checkout) {
     const nowIST = moment().tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ss.SSS");
     console.log("IST Time:", nowIST); // 2025-09-27T16:18:25.362
     

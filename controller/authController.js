@@ -21,7 +21,7 @@ const parseFlexibleDate = (value) => {
         const d = parseInt(m[1], 10);
         const mo = parseInt(m[2], 10) - 1;
         let y = parseInt(m[3], 10);
-        if (y < 100) y += 2000; 
+        if (y < 100) y += 2000;
         const dt = new Date(y, mo, d);
         return isNaN(dt.getTime()) ? null : dt;
     }
@@ -31,47 +31,47 @@ const parseFlexibleDate = (value) => {
 };
 
 export const register = async (req, res) => {
-    const { 
-        username, 
-        password, 
-        name, 
-        phone, 
-        email, 
-        role, 
-        employeeId, 
-        department, 
+    const {
+        username,
+        password,
+        name,
+        phone,
+        email,
+        role,
+        employeeId,
+        department,
         designation,
         dob,
         joiningDate,
     } = req.body;
     console.log(req.body);
-    
+
     // Check required fields
-    if(!username || !password || !name || !phone || !email || !role || !department || !designation) {
-        return res.status(400).json({ 
+    if (!username || !password || !name || !phone || !email || !role || !department || !designation) {
+        return res.status(400).json({
             message: "All required fields are missing",
             required: ["username", "password", "name", "phone", "email", "role", "department", "designation"]
         });
     }
-    
+
     try {
         // Check if user already exists by username/email
-        const existingUser = await User.findOne({ 
+        const existingUser = await User.findOne({
             $or: [
-                { username }, 
+                { username },
                 { email }
             ]
         });
-        
-        if(existingUser) {
-            return res.status(400).json({ 
-                message: "User already exists with this username, email, or employee ID" 
+
+        if (existingUser) {
+            return res.status(400).json({
+                message: "User already exists with this username, email, or employee ID"
             });
         }
-        
+
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        
+
         // Generate employeeId if not provided
         let finalEmployeeId = employeeId;
         const prefix = "UF";
@@ -104,16 +104,16 @@ export const register = async (req, res) => {
         }
 
         // Prepare user payload
-        const payload = { 
-            username, 
-            password: hashedPassword, 
-            name, 
-            phone, 
-            email, 
-            role, 
-            employeeId: finalEmployeeId, 
-            department, 
-            designation ,
+        const payload = {
+            username,
+            password: hashedPassword,
+            name,
+            phone,
+            email,
+            role,
+            employeeId: finalEmployeeId,
+            department,
+            designation,
             dob,
             joiningDate,
         };
@@ -129,97 +129,106 @@ export const register = async (req, res) => {
         const user = new User(payload);
 
         await user.save();
-        
+
         const userResponse = user.toObject();
         delete userResponse.password;
-        
+
         res.status(201).json({
             user: userResponse,
             status: "success",
-            message: "User registered successfully" 
+            message: "User registered successfully"
         });
     } catch (error) {
         console.error("Registration error:", error);
-        res.status(500).json({ 
-            message: "Error registering user", 
-            error: error.message 
+        res.status(500).json({
+            message: "Error registering user",
+            error: error.message
         });
     }
 };
 
 export const login = async (req, res) => {
     const { username, password } = req.body;
-            if (!username || !password) {
-            return res.status(400).json({ 
-                status: "error",
-                message: "Username and password are required" 
-            });
-        }
-    
+    if (!username || !password) {
+        return res.status(400).json({
+            status: "error",
+            message: "Username and password are required"
+        });
+    }
+
     try {
         // Find user and populate all fields
         const user = await User.findOne({ username }).select('+password');
         if (!user) {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 status: "error",
-                message: "Invalid credentials" 
+                message: "Invalid credentials"
             });
         }
-        
+
         // Check if user is active
         if (!user.isActive) {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 status: "error",
-                message: "Account is deactivated" 
+                message: "Account is deactivated"
             });
         }
-        
+
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 status: "error",
-                message: "Invalid credentials" 
+                message: "Invalid credentials"
             });
         }
-        
+
         // Update last login time
         user.lastLogin = new Date();
         await user.save();
-        
+
         // Generate JWT token
-        const token = jwt.sign({ 
+        const token = jwt.sign({
             userId: user._id,
             username: user.username,
             role: user.role,
             employeeId: user.employeeId
-        }, process.env.JWT_SECRET, { });
-        
+        }, process.env.JWT_SECRET, {});
+
         console.log(user)
         const userResponse = user.toObject();
         delete userResponse.password;
+
+        const nowIST = moment().tz("Asia/Kolkata");
+        const istDate = new Date(
+            nowIST.year(),
+            nowIST.month(), // month 0-indexed
+            nowIST.date(),
+            nowIST.hour(),
+            nowIST.minute(),
+            nowIST.second(),
+            nowIST.millisecond()
+        );
         
-        const dobDate = parseFlexibleDate(userResponse.dob);
-        const today = moment().tz("Asia/Kolkata").startOf('day').toDate();
+
         let attendance = await Attendance.findOne({ employeeId: user._id, date: today });
 
-        const nowIST = moment().tz("Asia/Kolkata").toDate();
 
         if (!attendance) {
-          attendance = new Attendance({
-            employeeId: user._id,
-            employeeName: user.name,
-            profilePhoto: user.profilePicture || null,
-            date: today,
-            checkIn: nowIST
-          });
-          await attendance.save();
+            attendance = new Attendance({
+                employeeId: user._id,
+                employeeName: user.name,
+                profilePhoto: user.profilePicture || null,
+                date: istDate,
+                checkIn: istDate
+            });
+            await attendance.save();
         } else if (!attendance.checkIn) {
-          attendance.checkIn = nowIST;
-          await attendance.save();
+            attendance.checkIn = nowIST;
+            await attendance.save();
         }
 
-        
+
         // Return complete user details
         res.status(200).json({
             status: "success",
@@ -227,13 +236,13 @@ export const login = async (req, res) => {
             token: token,
             user
         });
-        
+
     } catch (error) {
         console.error("Login error:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             status: "error",
-            message: "Error during login", 
-            error: error.message 
+            message: "Error during login",
+            error: error.message
         });
     }
 };
@@ -242,15 +251,15 @@ export const logout = async (req, res) => {
     try {
         // Get user from authenticated request
         const userId = req.user._id;
-        
+
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 status: "error",
-                message: "User not found" 
+                message: "User not found"
             });
         }
-        
+
         // Clear token (if you have token field in user schema)
         if (user.token) {
             user.token = null;
@@ -283,16 +292,16 @@ export const logout = async (req, res) => {
 
         await attendance.save();
 
-        
-        res.status(200).json({ 
+
+        res.status(200).json({
             status: "success",
-            message: "Logout successful & check-out recorded!" 
+            message: "Logout successful & check-out recorded!"
         });
     } catch (error) {
         console.error("Logout error:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             status: "error",
-            message: "Error during logout" 
+            message: "Error during logout"
         });
     }
 };
@@ -301,22 +310,22 @@ export const getUserProfile = async (req, res) => {
     try {
         // Get user from authenticated request
         const userId = req.user._id;
-        
+
         // Find user by ID
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 status: "error",
-                message: "User not found" 
+                message: "User not found"
             });
         }
-        
+
         // Remove password from response
         const userResponse = user.toObject();
         delete userResponse.password;
         const dobDate = parseFlexibleDate(userResponse.dob);
         const formattedDob = dobDate ? dobDate.toISOString() : null;
-        
+
         // Return complete user details
         res.status(200).json({
             status: "success",
@@ -326,14 +335,14 @@ export const getUserProfile = async (req, res) => {
                 _id: userResponse._id,
                 username: userResponse.username,
                 role: userResponse.role,
-                
+
                 // Status Flags
                 isAdmin: userResponse.isAdmin,
                 isManager: userResponse.isManager,
                 isHR: userResponse.isHR,
                 isEmployee: userResponse.isEmployee,
                 isActive: userResponse.isActive,
-                
+
                 // Personal Information
                 name: userResponse.name,
                 email: userResponse.email,
@@ -346,44 +355,44 @@ export const getUserProfile = async (req, res) => {
                 dob: formattedDob,
                 gender: userResponse.gender,
                 profilePicture: userResponse.profilePicture,
-                
+
                 // Employment Information
                 employeeId: userResponse.employeeId,
                 joiningDate: userResponse.joiningDate,
                 salary: userResponse.salary,
                 experience: userResponse.experience,
                 education: userResponse.education,
-                
+
                 // Bank Information
                 bankName: userResponse.bankName,
                 bankAccountNumber: userResponse.bankAccountNumber,
                 bankAccountType: userResponse.bankAccountType,
                 bankIFSC: userResponse.bankIFSC,
                 bankAccountHolderName: userResponse.bankAccountHolderName,
-                
+
                 // Work Details
                 department: userResponse.department,
                 designation: userResponse.designation,
-                
+
                 // Additional Fields
                 skills: userResponse.skills,
                 certifications: userResponse.certifications,
                 achievements: userResponse.achievements,
                 notes: userResponse.notes,
                 lastLogin: userResponse.lastLogin,
-                
+
                 // Timestamps
                 createdAt: userResponse.createdAt,
                 updatedAt: userResponse.updatedAt
             }
         });
-        
+
     } catch (error) {
         console.error("Get profile error:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             status: "error",
-            message: "Error retrieving profile", 
-            error: error.message 
+            message: "Error retrieving profile",
+            error: error.message
         });
     }
 };

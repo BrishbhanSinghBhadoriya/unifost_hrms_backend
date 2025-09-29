@@ -282,12 +282,23 @@ export const logout = async (req, res) => {
             employeeId: userId,
             date: { $gte: todayStart, $lte: todayEnd }
         });
+        console.log(attendance);
+
 
         if (!attendance) {
-            return res.status(404).json({
-                success: false,
-                message: "Attendance is Empty!"
-            });
+            // Fallback: find most recent open attendance in the last 36 hours (handles date mismatches)
+            const fallbackFrom = moment().tz("Asia/Kolkata").subtract(36, 'hours').toDate();
+            attendance = await Attendance.findOne({
+                employeeId: userId,
+                checkOut: null,
+                date: { $gte: fallbackFrom }
+            }).sort({ date: -1 });
+            if (!attendance) {
+                return res.status(404).json({
+                    success: false,
+                    message: "No open attendance found to check-out"
+                });
+            }
         }
 
         // Determine checkout time: use provided time if valid; otherwise current time

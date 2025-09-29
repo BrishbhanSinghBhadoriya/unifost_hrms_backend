@@ -19,3 +19,4 @@ router.put("/employee/:id", authenticateToken, updateEmployee);
 router.get("/getDashboard",authenticateToken,getDashboardData)
 
 export default router;
+    

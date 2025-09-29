@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import moment from "moment-timezone";
 const AttendanceSchema = new mongoose.Schema({
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     employeeName: String,
@@ -17,7 +18,9 @@ AttendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
 // Normalize date to start-of-day on save (guard against time components)
 AttendanceSchema.pre("save", function(next) {
   if (this.date instanceof Date && !isNaN(this.date.getTime())) {
-    this.date.setHours(0, 0, 0, 0);
+    // Normalize to start-of-day in IST to keep per-day uniqueness consistent with app logic
+    const istStart = moment(this.date).tz("Asia/Kolkata").startOf("day").toDate();
+    this.date = istStart;
   }
   next();
 });
@@ -36,5 +39,24 @@ AttendanceSchema.pre("findOneAndUpdate", function(next) {
   this.populate("employeeId", employeeSelect);
   next();
 });
-  const Attendance = mongoose.model("Attendance", AttendanceSchema);
+// Ensure IST-friendly fields in API responses
+AttendanceSchema.set("toJSON", {
+  virtuals: true,
+  transform: function(doc, ret) {
+    try {
+      if (ret.date) {
+        ret.dateIST = moment(ret.date).tz("Asia/Kolkata").format();
+      }
+      if (ret.checkIn) {
+        ret.checkInIST = moment(ret.checkIn).tz("Asia/Kolkata").format();
+      }
+      if (ret.checkOut) {
+        ret.checkOutIST = moment(ret.checkOut).tz("Asia/Kolkata").format();
+      }
+    } catch (e) {}
+    return ret;
+  }
+});
+
+const Attendance = mongoose.model("Attendance", AttendanceSchema);
   export default Attendance;

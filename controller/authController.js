@@ -195,48 +195,47 @@ export const login = async (req, res) => {
             employeeId: user.employeeId
         }, process.env.JWT_SECRET, {});
 
-        console.log(user)
+        // Remove password from response
         const userResponse = user.toObject();
         delete userResponse.password;
 
+        // Create IST date for attendance (start of day in IST)
         const nowIST = moment().tz("Asia/Kolkata");
+        const todayStartIST = nowIST.clone().startOf('day').toDate();
+        
+        console.log('IST Date for attendance:', todayStartIST);
 
-        // Create Date object using components
-        const istDate = new Date(
-            nowIST.year(),
-            nowIST.month(),      // 0-based
-            nowIST.date(),
-            nowIST.hour(),
-            nowIST.minute(),
-            nowIST.second(),
-            nowIST.millisecond()
-        );
-
-        console.log(istDate);
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: istDate });
-
+        // Find or create attendance record
+        let attendance = await Attendance.findOne({ 
+            employeeId: user._id, 
+            date: todayStartIST 
+        });
 
         if (!attendance) {
+            // Create new attendance with current time as check-in
+            const checkInTime = nowIST.toDate();
             attendance = new Attendance({
                 employeeId: user._id,
                 employeeName: user.name,
                 profilePhoto: user.profilePicture || null,
-                date: istDate,
-                checkIn: istDate
+                date: todayStartIST, // Store the date part only (start of day)
+                checkIn: checkInTime // Store full datetime
             });
             await attendance.save();
+            console.log('New attendance created with check-in:', checkInTime);
         } else if (!attendance.checkIn) {
-            attendance.checkIn = nowIST;
+            // Update check-in if not already set
+            attendance.checkIn = nowIST.toDate();
             await attendance.save();
+            console.log('Check-in updated:', attendance.checkIn);
         }
-
 
         // Return complete user details
         res.status(200).json({
             status: "success",
             message: "Login successful and check-in recorded!",
             token: token,
-            user
+            user: userResponse
         });
 
     } catch (error) {
@@ -252,9 +251,6 @@ export const login = async (req, res) => {
 export const logout = async (req, res) => {
     try {
         const userId = req.user._id;
-        let { checkOuttime } = req.body;
-
-        console.log("Raw checkoutTime:", checkOuttime);
 
         const user = await User.findById(userId);
         if (!user) {
@@ -264,47 +260,55 @@ export const logout = async (req, res) => {
             });
         } 
 
-        const todayStart = moment().tz("Asia/Kolkata").startOf('day').toDate();
-        const todayEnd = moment().tz("Asia/Kolkata").endOf('day').toDate();
+        const nowIST = moment().tz("Asia/Kolkata");
+        const todayStartIST = nowIST.clone().startOf('day').toDate();
+        const todayEndIST = nowIST.clone().endOf('day').toDate();
+
+        console.log('Searching attendance between:', todayStartIST, 'and', todayEndIST);
 
         let attendance = await Attendance.findOne({
             employeeId: userId,
-            date: { $gte: todayStart, $lte: todayEnd }
+            date: { $gte: todayStartIST, $lte: todayEndIST }
         });
 
         if (!attendance) {
             return res.status(404).json({
                 success: false,
-                message: "Attendance is Empty!"
+                message: "No attendance record found for today!"
             });
         }
+
+        // Use current time for checkout
+        const checkoutTime = nowIST.toDate();
+        console.log('Checkout time:', checkoutTime);
 
         // Validate checkoutTime
-        let checkoutDate = moment(checkOuttime).tz("Asia/Kolkata").toDate();
-
-        if (isNaN(checkoutDate.getTime())) {
+        if (isNaN(checkoutTime.getTime())) {
             return res.status(400).json({
                 status: "error",
-                message: "Invalid checkout time received!"
+                message: "Invalid checkout time generated!"
             });
         }
-          console.log('checkoutDate',checkoutDate)
-        if (!attendance.checkOut || attendance.checkOut==null) {
-            attendance.checkOut = checkoutDate;
-        }
-        
 
-        console.log("Checkout stored:", attendance.checkOut);
-
-        // Compute hoursWorked
-        if (attendance.checkIn && attendance.checkOut) {
-            const hours = (attendance.checkOut - attendance.checkIn) / 36e5;
+        // Only set checkout if not already set and check-in exists
+        if (attendance.checkIn && (!attendance.checkOut || attendance.checkOut === null)) {
+            attendance.checkOut = checkoutTime;
+            
+            // Compute hoursWorked
+            const hours = (attendance.checkOut - attendance.checkIn) / (1000 * 60 * 60); // Convert ms to hours
             attendance.hoursWorked = hours > 0 ? hours : 0;
             attendance.status = attendance.status || "present";
+            
+            await attendance.save();
+            console.log('Checkout recorded successfully:', attendance.checkOut);
+            console.log('Hours worked:', attendance.hoursWorked);
+        } else if (!attendance.checkIn) {
+            console.log('No check-in found, skipping checkout');
+        } else {
+            console.log('Checkout already recorded:', attendance.checkOut);
         }
 
-        await attendance.save();
-
+        // Clear user token if exists
         if (user.token) {
             user.token = null;
             await user.save();
@@ -319,7 +323,8 @@ export const logout = async (req, res) => {
         console.error("Logout error:", error);
         res.status(500).json({
             status: "error",
-            message: "Error during logout"
+            message: "Error during logout",
+            error: error.message
         });
     }
 };

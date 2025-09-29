@@ -5,7 +5,7 @@ const AttendanceSchema = new mongoose.Schema({
     profilePhoto: { type: String, default: null }, // URL or path to profile photo
     date: { type: Date, required: true },
     checkIn: { type: String, default: null },
-    checkOut: { type: Date, default: null },
+    checkOut: { type: String, default: null },
     hoursWorked: { type: Number, default: 0 },
     status: { type: String, enum: ["present", "absent", "leave", "holiday","late"], default: "present" }
   });

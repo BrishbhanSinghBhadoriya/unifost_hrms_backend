@@ -200,44 +200,33 @@ export const login = async (req, res) => {
         delete userResponse.password;
 
         const nowIST = moment().tz("Asia/Kolkata");
-        const todayStart = nowIST.clone().startOf('day').toDate();
-        const todayEnd = nowIST.clone().endOf('day').toDate();
-        const nowDate = nowIST.toDate();
 
-        // Find today's attendance (single record per day enforced by unique index)
-        let attendance = await Attendance.findOne({
-            employeeId: user._id,
-            date: { $gte: todayStart, $lte: todayEnd }
-        });
+        // Create Date object using components
+        const istDate = new Date(
+            nowIST.year(),
+            nowIST.month(),      // 0-based
+            nowIST.date(),
+            nowIST.hour(),
+            nowIST.minute(),
+            nowIST.second(),
+            nowIST.millisecond()
+        );
+
+        console.log(istDate);
+        let attendance = await Attendance.findOne({ employeeId: user._id, date: istDate });
+
 
         if (!attendance) {
-            try {
-                attendance = new Attendance({
-                    employeeId: user._id,
-                    employeeName: user.name,
-                    profilePhoto: user.profilePicture || null,
-                    // Persist date anchored at start-of-day so duplicates aren't created
-                    date: new Date(todayStart),
-                    checkIn: nowDate
-                });
-                await attendance.save();
-            } catch (e) {
-                // In case of race/duplicate key, fetch the existing record and update checkIn if needed
-                if (e && e.code === 11000) {
-                    attendance = await Attendance.findOne({
-                        employeeId: user._id,
-                        date: { $gte: todayStart, $lte: todayEnd }
-                    });
-                    if (attendance && !attendance.checkIn) {
-                        attendance.checkIn = nowDate;
-                        await attendance.save();
-                    }
-                } else {
-                    throw e;
-                }
-            }
+            attendance = new Attendance({
+                employeeId: user._id,
+                employeeName: user.name,
+                profilePhoto: user.profilePicture || null,
+                date: istDate,
+                checkIn: istDate
+            });
+            await attendance.save();
         } else if (!attendance.checkIn) {
-            attendance.checkIn = nowDate;
+            attendance.checkIn = nowIST;
             await attendance.save();
         }
 
@@ -282,38 +271,25 @@ export const logout = async (req, res) => {
             employeeId: userId,
             date: { $gte: todayStart, $lte: todayEnd }
         });
-        console.log(attendance);
-
 
         if (!attendance) {
-            // Fallback: find most recent open attendance in the last 36 hours (handles date mismatches)
-            const fallbackFrom = moment().tz("Asia/Kolkata").subtract(36, 'hours').toDate();
-            attendance = await Attendance.findOne({
-                employeeId: userId,
-                checkOut: null,
-                date: { $gte: fallbackFrom }
-            }).sort({ date: -1 });
-            if (!attendance) {
-                return res.status(404).json({
-                    success: false,
-                    message: "No open attendance found to check-out"
-                });
-            }
+            return res.status(404).json({
+                success: false,
+                message: "Attendance is Empty!"
+            });
         }
 
-        // Determine checkout time: use provided time if valid; otherwise current time
-        let checkoutDate = null;
-        if (checkOuttime) {
-            const parsed = moment(checkOuttime).tz("Asia/Kolkata");
-            if (parsed.isValid()) {
-                checkoutDate = parsed.toDate();
-            }
+        // Validate checkoutTime
+        let checkoutDate = moment(checkOuttime).tz("Asia/Kolkata").toDate();
+
+        if (isNaN(checkoutDate.getTime())) {
+            return res.status(400).json({
+                status: "error",
+                message: "Invalid checkout time received!"
+            });
         }
-        if (!checkoutDate) {
-            checkoutDate = moment().tz("Asia/Kolkata").toDate();
-        }
-        console.log('checkoutDate', checkoutDate);
-        if (!attendance.checkOut) {
+          console.log('checkoutDate',checkoutDate)
+        if (!attendance.checkOut || attendance.checkOut==null) {
             attendance.checkOut = checkoutDate;
         }
         
@@ -322,9 +298,7 @@ export const logout = async (req, res) => {
 
         // Compute hoursWorked
         if (attendance.checkIn && attendance.checkOut) {
-            const checkInDate = new Date(attendance.checkIn);
-            const checkOutDate = new Date(attendance.checkOut);
-            const hours = (checkOutDate - checkInDate) / 36e5;
+            const hours = (attendance.checkOut - attendance.checkIn) / 36e5;
             attendance.hoursWorked = hours > 0 ? hours : 0;
             attendance.status = attendance.status || "present";
         }
@@ -338,15 +312,7 @@ export const logout = async (req, res) => {
 
         res.status(200).json({
             status: "success",
-            message: "Logout successful & check-out recorded!!!",
-            attendance: {
-                id: attendance._id,
-                date: attendance.date,
-                checkIn: attendance.checkIn,
-                checkOut: attendance.checkOut,
-                hoursWorked: attendance.hoursWorked,
-                status: attendance.status
-            }
+            message: "Logout successful & check-out recorded!!!"
         });
 
     } catch (error) {

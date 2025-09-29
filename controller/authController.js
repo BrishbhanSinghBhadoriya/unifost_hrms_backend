@@ -200,33 +200,44 @@ export const login = async (req, res) => {
         delete userResponse.password;
 
         const nowIST = moment().tz("Asia/Kolkata");
+        const todayStart = nowIST.clone().startOf('day').toDate();
+        const todayEnd = nowIST.clone().endOf('day').toDate();
+        const nowDate = nowIST.toDate();
 
-        // Create Date object using components
-        const istDate = new Date(
-            nowIST.year(),
-            nowIST.month(),      // 0-based
-            nowIST.date(),
-            nowIST.hour(),
-            nowIST.minute(),
-            nowIST.second(),
-            nowIST.millisecond()
-        );
-
-        console.log(istDate);
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: istDate });
-
+        // Find today's attendance (single record per day enforced by unique index)
+        let attendance = await Attendance.findOne({
+            employeeId: user._id,
+            date: { $gte: todayStart, $lte: todayEnd }
+        });
 
         if (!attendance) {
-            attendance = new Attendance({
-                employeeId: user._id,
-                employeeName: user.name,
-                profilePhoto: user.profilePicture || null,
-                date: istDate,
-                checkIn: istDate
-            });
-            await attendance.save();
+            try {
+                attendance = new Attendance({
+                    employeeId: user._id,
+                    employeeName: user.name,
+                    profilePhoto: user.profilePicture || null,
+                    // Persist date anchored at start-of-day so duplicates aren't created
+                    date: new Date(todayStart),
+                    checkIn: nowDate
+                });
+                await attendance.save();
+            } catch (e) {
+                // In case of race/duplicate key, fetch the existing record and update checkIn if needed
+                if (e && e.code === 11000) {
+                    attendance = await Attendance.findOne({
+                        employeeId: user._id,
+                        date: { $gte: todayStart, $lte: todayEnd }
+                    });
+                    if (attendance && !attendance.checkIn) {
+                        attendance.checkIn = nowDate;
+                        await attendance.save();
+                    }
+                } else {
+                    throw e;
+                }
+            }
         } else if (!attendance.checkIn) {
-            attendance.checkIn = nowIST;
+            attendance.checkIn = nowDate;
             await attendance.save();
         }
 
@@ -251,8 +262,10 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
     try {
-        // Get user from authenticated request
         const userId = req.user._id;
+        let { checkOuttime } = req.body;
+
+        console.log("Raw checkoutTime:", checkOuttime);
 
         const user = await User.findById(userId);
         if (!user) {
@@ -260,54 +273,71 @@ export const logout = async (req, res) => {
                 status: "error",
                 message: "User not found"
             });
-        }
+        } 
 
-        // Clear token (if you have token field in user schema)
-
-        // Normalize to same day boundary as login (Asia/Kolkata)
         const todayStart = moment().tz("Asia/Kolkata").startOf('day').toDate();
         const todayEnd = moment().tz("Asia/Kolkata").endOf('day').toDate();
 
-         let attendance = await Attendance.findOne({
-            employeeId: userId, date: { $gte: todayStart, $lte: todayEnd }
+        let attendance = await Attendance.findOne({
+            employeeId: userId,
+            date: { $gte: todayStart, $lte: todayEnd }
         });
-        
+
         if (!attendance) {
-            res.status(404).json({
-                sucess: "false",
-                message: "Attendance is Empty !"
-            })
+            return res.status(404).json({
+                success: false,
+                message: "Attendance is Empty!"
+            });
         }
-        console.log(attendance)
-        // Set checkOut if not already set
+
+        // Determine checkout time: use provided time if valid; otherwise current time
+        let checkoutDate = null;
+        if (checkOuttime) {
+            const parsed = moment(checkOuttime).tz("Asia/Kolkata");
+            if (parsed.isValid()) {
+                checkoutDate = parsed.toDate();
+            }
+        }
+        if (!checkoutDate) {
+            checkoutDate = moment().tz("Asia/Kolkata").toDate();
+        }
+        console.log('checkoutDate', checkoutDate);
+        if (!attendance.checkOut) {
+            attendance.checkOut = checkoutDate;
+        }
         
-        // Check if checkout is not already done
-if (!attendance.checkout) {
-    const nowIST = moment().tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ss.SSS");
-    console.log("IST Time:", nowIST); // 2025-09-27T16:18:25.362
-    
-    // IST time se Date object banayein
-    attendance.checkOut = nowIST;
-}
-console.log("Checkout stored:", attendance.checkOut);
-        // Compute hoursWorked if checkIn exists
+
+        console.log("Checkout stored:", attendance.checkOut);
+
+        // Compute hoursWorked
         if (attendance.checkIn && attendance.checkOut) {
-            const hours = (attendance.checkOut - attendance.checkIn) / 36e5;
+            const checkInDate = new Date(attendance.checkIn);
+            const checkOutDate = new Date(attendance.checkOut);
+            const hours = (checkOutDate - checkInDate) / 36e5;
             attendance.hoursWorked = hours > 0 ? hours : 0;
             attendance.status = attendance.status || "present";
         }
 
         await attendance.save();
+
         if (user.token) {
             user.token = null;
             await user.save();
         }
 
-
         res.status(200).json({
             status: "success",
-            message: "Logout successful & check-out recorded!!!"
+            message: "Logout successful & check-out recorded!!!",
+            attendance: {
+                id: attendance._id,
+                date: attendance.date,
+                checkIn: attendance.checkIn,
+                checkOut: attendance.checkOut,
+                hoursWorked: attendance.hoursWorked,
+                status: attendance.status
+            }
         });
+
     } catch (error) {
         console.error("Logout error:", error);
         res.status(500).json({
@@ -316,7 +346,6 @@ console.log("Checkout stored:", attendance.checkOut);
         });
     }
 };
-
 export const getUserProfile = async (req, res) => {
     try {
         // Get user from authenticated request

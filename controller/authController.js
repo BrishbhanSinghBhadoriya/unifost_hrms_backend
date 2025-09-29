@@ -200,6 +200,8 @@ export const login = async (req, res) => {
         delete userResponse.password;
 
         const nowIST = moment().tz("Asia/Kolkata");
+        const todayStartIST = moment().tz("Asia/Kolkata").startOf('day').toDate();
+
 
         // Create Date object using components
         const istDate = new Date(
@@ -213,7 +215,7 @@ export const login = async (req, res) => {
         );
 
         console.log(istDate);
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: istDate });
+        let attendance = await Attendance.findOne({ employeeId: user._id, date: todayStartIST });
 
 
         if (!attendance) {
@@ -264,13 +266,19 @@ export const logout = async (req, res) => {
             });
         } 
 
-        const todayStart = moment().tz("Asia/Kolkata").startOf('day').toDate();
-        const todayEnd = moment().tz("Asia/Kolkata").endOf('day').toDate();
+        const todayStartIST = moment().tz("Asia/Kolkata").startOf('day').format("YYYY-MM-DD HH:mm:ss");
+const todayEndIST   = moment().tz("Asia/Kolkata").endOf('day').format("YYYY-MM-DD HH:mm:ss");
+
+console.log("todayStart IST:", todayStartIST);
+console.log("todayEnd IST:", todayEndIST);
 
         let attendance = await Attendance.findOne({
             employeeId: userId,
-            date: { $gte: todayStart, $lte: todayEnd }
+             date: { $gte: todayStartIST, $lte: todayEndIST }
         });
+        console.log("todayStart IST:", todayStartIST);
+        console.log("todayEnd IST:", todayEndIST);
+        console.log("attendance",attendance)
 
         if (!attendance) {
             return res.status(404).json({
@@ -289,9 +297,9 @@ export const logout = async (req, res) => {
             });
         }
           console.log('checkoutDate',checkoutDate)
-        if (!attendance.checkOut || attendance.checkOut==null) {
+       
             attendance.checkOut = checkoutDate;
-        }
+        
         
 
         console.log("Checkout stored:", attendance.checkOut);

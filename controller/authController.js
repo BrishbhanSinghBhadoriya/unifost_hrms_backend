@@ -201,6 +201,8 @@ export const login = async (req, res) => {
 
         const nowIST = moment().tz("Asia/Kolkata");
         const todayStartIST = moment().tz("Asia/Kolkata").startOf('day').toDate();
+        const lateCutoff = moment().tz("Asia/Kolkata").set({ hour: 10, minute: 10, second: 0, millisecond: 0 });
+        const isLate = nowIST.isAfter(lateCutoff);
 
 
         // Create Date object using components
@@ -224,24 +226,25 @@ export const login = async (req, res) => {
                 employeeName: user.name,
                 profilePhoto: user.profilePicture || null,
                 date: istDate,
-                checkIn: istDate
+                // Store as ISO string due to current schema using String for times
+                checkIn: nowIST.toISOString(),
+                status: isLate ? "late" : "present"
             });
             await attendance.save();
         } else if (!attendance.checkIn) {
-            attendance.checkIn = nowIST;
+            attendance.checkIn = nowIST.toISOString();
+            attendance.status = isLate ? "late" : "present";
             await attendance.save();
+        } else {
+            // If checkIn exists and is after cutoff, ensure status reflects "late"
+            const existingCheckIn = new Date(attendance.checkIn);
+            if (!isNaN(existingCheckIn.getTime()) && existingCheckIn > lateCutoff.toDate()) {
+                if (attendance.status !== "late") {
+                    attendance.status = "late";
+                    await attendance.save();
+                }
+            }
         }
-        const tenTenIST = moment().tz("Asia/Kolkata").set({
-            hour: 10,
-            minute: 10,
-            second: 0,
-            millisecond: 0
-        }).toDate();
-        
-        if (attendance.checkIn > tenTenIST) {
-            attendance.status = "late";
-            await attendance.save();
-        } 
 
         // Return complete user details
         res.status(200).json({

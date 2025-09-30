@@ -231,7 +231,17 @@ export const login = async (req, res) => {
             attendance.checkIn = nowIST;
             await attendance.save();
         }
-
+        const tenTenIST = moment().tz("Asia/Kolkata").set({
+            hour: 10,
+            minute: 10,
+            second: 0,
+            millisecond: 0
+        }).toDate();
+        
+        if (attendance.checkIn > tenTenIST) {
+            attendance.status = "late";
+            await attendance.save();
+        } 
 
         // Return complete user details
         res.status(200).json({

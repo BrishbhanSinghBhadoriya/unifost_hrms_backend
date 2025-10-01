@@ -18,5 +18,6 @@ hrRouter.get('/getupcomingLeaves',authenticateToken,getUpcomingLeave)
 hrRouter.post('/createAnnouncement',authenticateToken,createAnnouncement)
 hrRouter.get('/getAnnouncement',authenticateToken,getAnnouncement)
 hrRouter.get('/getTodayAttendanceSummary',authenticateToken,getTodayAttendanceSummary)
+hrRouter.delete('/deleteEmployee/:id',authenticateToken,deleteEmployee)
 export default hrRouter;
 

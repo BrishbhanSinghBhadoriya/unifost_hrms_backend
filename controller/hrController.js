@@ -68,29 +68,44 @@ export const getHrDashboardWithAttendance = async (req, res) => {
         ]);
   
       
-      // Current month window: [startOfMonth, startOfNextMonth)
-      const nowLocal = new Date();
-      const rangeStart = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1, 0, 0, 0, 0);
-      const rangeEnd = new Date(nowLocal.getFullYear(), nowLocal.getMonth() + 1, 1, 0, 0, 0, 0);
+      const today = new Date();
+today.setHours(0, 0, 0, 0);
 
-      const attendance = await Attendance.find({
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+      let rangeStart = today;
+      let rangeEnd = tomorrow;
+      let attendance = await Attendance.find({
         date: { $gte: rangeStart, $lt: rangeEnd }
       }).lean();
 
-      // Use case-insensitive exact matches so "Late" isn't counted as "absent"
+      if (!attendance || attendance.length === 0) {
+        const nextDay = new Date(tomorrow);
+        const dayAfterNext = new Date(nextDay);
+        dayAfterNext.setDate(dayAfterNext.getDate() + 1);
+
+        rangeStart = nextDay;
+        rangeEnd = dayAfterNext;
+
+        attendance = await Attendance.find({
+          date: { $gte: rangeStart, $lt: rangeEnd }
+        }).lean();
+      }
+
       const presentCount = await Attendance.countDocuments({
         date: { $gte: rangeStart, $lt: rangeEnd },
-        status: { $regex: /^present$/i }
+        status: "present"
       });
       
       const absentCount = await Attendance.countDocuments({
         date: { $gte: rangeStart, $lt: rangeEnd },
-        status: { $regex: /^absent$/i }
+        status: "absent"
       });
       
       const lateCount = await Attendance.countDocuments({
         date: { $gte: rangeStart, $lt: rangeEnd },
-        status: { $regex: /^late$/i }
+        status: "late"
       });
       
       console.log("Attendance counts window", { rangeStart, rangeEnd, presentCount, absentCount, lateCount });
@@ -100,7 +115,6 @@ export const getHrDashboardWithAttendance = async (req, res) => {
         .lean();
         console.log(usersWithDob);
 
-      const today = new Date();
       const startOfTodayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
       const upcomingBirthdays = usersWithDob

@@ -332,26 +332,30 @@ export const getEmployee = async (req, res) => {
   
       const totalWorkingDays = monthlyRecords.length;
       const presentDays = monthlyRecords.filter(r => r.status?.toLowerCase() === "present").length;
-      const absentDays = totalWorkingDays - presentDays;
+      const absentDays = monthlyRecords.filter(r => r.status?.toLowerCase() === "absent").length;
+      const lateDays = monthlyRecords.filter(r => r.status?.toLowerCase() === "late").length;
   
       // =======================
       // 🔹 Today's Attendance
       // =======================
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-  
+
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-  
+
       const todaysRecord = await Attendance.findOne({
         employeeId: targetUserId,
         date: { $gte: today, $lt: tomorrow }
-      });
-  
+      }).sort({ date: -1 });
+
+      const formatISTDate = (date) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata' }).format(date);
       let todaysAttendance;
+      console.log("todaysRecord",todaysRecord)
       if (!todaysRecord) {
         todaysAttendance = {
           date: today,
+          localDate: formatISTDate(today),
           status: "Absent (No check-in)",
           checkIn: null,
           checkOut: null,
@@ -360,6 +364,7 @@ export const getEmployee = async (req, res) => {
       } else {
         todaysAttendance = {
           date: todaysRecord.date,
+          localDate: formatISTDate(todaysRecord.date),
           status: todaysRecord.status || (todaysRecord.checkIn ? "Present" : "Absent"),
           checkIn: todaysRecord.checkIn,
           checkOut: todaysRecord.checkOut,
@@ -377,6 +382,7 @@ export const getEmployee = async (req, res) => {
             totalWorkingDays,
             presentDays,
             absentDays,
+            lateDays,
             attendance: monthlyRecords
           },
           today: todaysAttendance

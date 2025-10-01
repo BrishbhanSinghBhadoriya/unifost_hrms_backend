@@ -3,7 +3,7 @@ import { authenticateToken } from "../middleware/auth.js";
 import { getEmployee } from "../controller/employeeController.js";
 import getAttendance, { markAttendance,updateAttendance,deleteAttendance, markBulkAttendance, getTodayAttendanceSummary } from "../controller/attendanceController.js";
 import {createAnnouncement, getAnnouncement, getHrDashboardWithAttendance} from "../controller/hrController.js"
-import {getUpcomingLeave} from "../controller/hrController.js"
+import {getUpcomingLeave ,deleteEmployee} from "../controller/hrController.js"
 
 const hrRouter = express.Router();
 hrRouter.get("/getEmployees", authenticateToken, getEmployee);

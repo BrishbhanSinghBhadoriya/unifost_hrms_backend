@@ -247,7 +247,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       message: "Announcement fetched successfully"
     });
   }
-  const deleteEmployee=async(req,res)=>{
+ export const deleteEmployee=async(req,res)=>{
     const id=req.params.id;
     const employee=await User.findByIdAndDelete(id);
     res.status(200).json({

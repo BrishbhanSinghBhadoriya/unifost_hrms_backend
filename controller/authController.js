@@ -201,6 +201,7 @@ export const login = async (req, res) => {
 
         const nowIST = moment().tz("Asia/Kolkata");
         const todayStartIST = moment().tz("Asia/Kolkata").startOf('day').toDate();
+        const todayEndIST = moment().tz("Asia/Kolkata").endOf('day').toDate();
         const lateCutoff = moment().tz("Asia/Kolkata").set({ hour: 10, minute: 10, second: 0, millisecond: 0 });
         const isLate = nowIST.isAfter(lateCutoff);
 
@@ -217,7 +218,10 @@ export const login = async (req, res) => {
         );
 
         console.log(istDate);
-        let attendance = await Attendance.findOne({ employeeId: user._id, date: todayStartIST });
+        let attendance = await Attendance.findOne({
+            employeeId: user._id,
+            date: { $gte: todayStartIST, $lte: todayEndIST }
+        });
 
 
         if (!attendance) {
@@ -236,14 +240,13 @@ export const login = async (req, res) => {
             attendance.status = isLate ? "late" : "present";
             await attendance.save();
         } else {
-            // If checkIn exists and is after cutoff, ensure status reflects "late"
-            const existingCheckIn = new Date(attendance.checkIn);
-            if (!isNaN(existingCheckIn.getTime()) && existingCheckIn > lateCutoff.toDate()) {
-                if (attendance.status !== "late") {
-                    attendance.status = "late";
-                    await attendance.save();
-                }
-            }
+            // Already checked in today; don't duplicate
+            return res.status(200).json({
+                status: "success",
+                message: "Already checked in for today",
+                token: token,
+                user: userResponse
+            });
         }
 
         // Return complete user details
@@ -279,19 +282,13 @@ export const logout = async (req, res) => {
             });
         } 
 
-        const todayStartIST = moment().tz("Asia/Kolkata").startOf('day').format("YYYY-MM-DD HH:mm:ss");
-const todayEndIST   = moment().tz("Asia/Kolkata").endOf('day').format("YYYY-MM-DD HH:mm:ss");
-
-console.log("todayStart IST:", todayStartIST);
-console.log("todayEnd IST:", todayEndIST);
+        const todayStartIST = moment().tz("Asia/Kolkata").startOf('day').toDate();
+        const todayEndIST   = moment().tz("Asia/Kolkata").endOf('day').toDate();
 
         let attendance = await Attendance.findOne({
             employeeId: userId,
-             date: { $gte: todayStartIST, $lte: todayEndIST }
+            date: { $gte: todayStartIST, $lte: todayEndIST }
         });
-        console.log("todayStart IST:", todayStartIST);
-        console.log("todayEnd IST:", todayEndIST);
-        console.log("attendance",attendance)
 
         if (!attendance) {
             return res.status(404).json({
@@ -300,18 +297,22 @@ console.log("todayEnd IST:", todayEndIST);
             });
         }
 
-        // Validate checkoutTime
-        let checkoutDate = moment(checkOuttime).tz("Asia/Kolkata").toDate();
-
-        if (isNaN(checkoutDate.getTime())) {
-            return res.status(400).json({
-                status: "error",
-                message: "Invalid checkout time received!"
+        // Prevent double checkout
+        if (attendance.checkOut) {
+            return res.status(200).json({
+                status: "success",
+                message: "Already checked out for today"
             });
         }
-          console.log('checkoutDate',checkoutDate)
-       
-            attendance.checkOut = checkoutDate;
+
+        // Determine checkout time (prefer provided, fallback to now)
+        let checkoutDate = checkOuttime
+            ? moment(checkOuttime).tz("Asia/Kolkata")
+            : moment().tz("Asia/Kolkata");
+        if (!checkoutDate.isValid()) {
+            return res.status(400).json({ status: "error", message: "Invalid checkout time received!" });
+        }
+        attendance.checkOut = checkoutDate.toISOString();
         
         
 
@@ -319,7 +320,7 @@ console.log("todayEnd IST:", todayEndIST);
 
         // Compute hoursWorked
         if (attendance.checkIn && attendance.checkOut) {
-            const hours = (attendance.checkOut - attendance.checkIn) / 36e5;
+            const hours = (new Date(attendance.checkOut) - new Date(attendance.checkIn)) / 36e5;
             attendance.hoursWorked = hours > 0 ? hours : 0;
             attendance.status = attendance.status || "present";
         }

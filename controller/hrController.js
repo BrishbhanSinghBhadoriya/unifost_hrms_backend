@@ -95,18 +95,19 @@ tomorrow.setDate(tomorrow.getDate() + 1);
 
       const presentCount = await Attendance.countDocuments({
         date: { $gte: rangeStart, $lt: rangeEnd },
-        status: { $regex: /^present$/i }
+        status: "present"
       });
-
+      
       const absentCount = await Attendance.countDocuments({
         date: { $gte: rangeStart, $lt: rangeEnd },
-        status: { $regex: /^absent$/i }
+        status: "absent"
       });
-
+      
       const lateCount = await Attendance.countDocuments({
         date: { $gte: rangeStart, $lt: rangeEnd },
-        status: { $regex: /^late$/i }
+        status: "late"
       });
+      
       console.log("Attendance counts window", { rangeStart, rangeEnd, presentCount, absentCount, lateCount });
       const TEN_DAYS = 10;
       const usersWithDob = await User.find({ dob: { $ne: "" } })

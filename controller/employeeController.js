@@ -34,7 +34,7 @@ export const uploadSingleDocument = async (req, res) => {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ 
                 status: "error", 
-                message: "No file provided. Please upload a document image.",
+                message: "No file provided. Please upload a document (image or PDF).",
                 allowedFields: Array.from(allowedDocumentKeys)
             });
         }
@@ -225,6 +225,27 @@ export const updateEmployeeDocuments = async (req, res) => {
 };
 export const getEmployee = async (req, res) => {
     try {
+      const employeeId = req.params.id;
+      
+      // If employeeId is provided, return single employee
+      if (employeeId) {
+        const employee = await User.findById(employeeId).select('-password');
+        
+        if (!employee) {
+          return res.status(404).json({
+            success: false,
+            message: "Employee not found"
+          });
+        }
+        
+        return res.status(200).json({
+          success: true,
+          data: employee,
+          message: "Employee data fetched successfully"
+        });
+      }
+      
+      // If no employeeId, return paginated list
       let { page, limit, sortBy, sortOrder, search, department, status } = req.query;
   
       // Set default values and validation

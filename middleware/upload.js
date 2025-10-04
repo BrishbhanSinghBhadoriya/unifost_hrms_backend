@@ -7,7 +7,7 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'unifost-hrms', // Folder name in Cloudinary
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'],
         transformation: [
             { width: 500, height: 500, crop: 'limit' }, // Resize images
             { quality: 'auto' } // Auto optimize quality
@@ -22,11 +22,11 @@ const upload = multer({
         fileSize: 5 * 1024 * 1024, // 5MB limit
     },
     fileFilter: (req, file, cb) => {
-        // Check file type
-        if (file.mimetype.startsWith('image/')) {
+        // Check file type - allow images and PDFs
+        if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
             cb(null, true);
         } else {
-            cb(new Error('Only image files are allowed!'), false);
+            cb(new Error('Only image files and PDFs are allowed!'), false);
         }
     }
 });
@@ -57,10 +57,10 @@ export const handleUploadError = (error, req, res, next) => {
         }
     }
     
-    if (error.message === 'Only image files are allowed!') {
+    if (error.message === 'Only image files and PDFs are allowed!') {
         return res.status(400).json({
             status: 'error',
-            message: 'Only image files are allowed!'
+            message: 'Only image files and PDFs are allowed!'
         });
     }
     

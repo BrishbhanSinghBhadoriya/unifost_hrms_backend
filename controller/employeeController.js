@@ -420,7 +420,7 @@ export const getEmployee = async (req, res) => {
       });
     }
   };
-  export const getforgetPasswordRequest=async(req,res)=>{
+  export const SendforgetPasswordRequest=async(req,res)=>{
     try {
       const { name,email,role,department,designation } = req.body;
      if(!name || !email || !role || !department || !designation){

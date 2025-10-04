@@ -3,7 +3,7 @@ import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
 import { updateEmployee, getDashboardData, getEmployee } from "../controller/employeeController.js";
 import { enforceLoginRestrictions } from "../middleware/loginRestrictions.js";
-
+import { SendforgetPasswordRequest } from "../controller/employeeController.js";
 
 
 const router = express.Router();
@@ -18,6 +18,6 @@ router.get("/profile", authenticateToken, getUserProfile);
 router.put("/employee/:id", authenticateToken, updateEmployee);
 router.get("/employee/:id", authenticateToken, getEmployee);
 router.get("/getDashboard", authenticateToken, getDashboardData);
-
+router.post("/sendforgetPasswordRequest",SendforgetPasswordRequest);
 export default router;
     

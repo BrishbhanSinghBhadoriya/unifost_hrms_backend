@@ -19,5 +19,7 @@ hrRouter.post('/createAnnouncement',authenticateToken,createAnnouncement)
 hrRouter.get('/getAnnouncement',authenticateToken,getAnnouncement)
 hrRouter.get('/getTodayAttendanceSummary',authenticateToken,getTodayAttendanceSummary)
 hrRouter.delete('/deleteEmployee/:id',authenticateToken,deleteEmployee)
+hrRouter.post("/getforgetPasswordRequest",getforgetPasswordRequest);
+
 export default hrRouter;
 

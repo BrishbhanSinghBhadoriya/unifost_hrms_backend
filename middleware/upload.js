@@ -5,13 +5,25 @@ import cloudinary from '../config/cloudinary.js';
 // Configure Cloudinary storage
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: {
-        folder: 'unifost-hrms', // Folder name in Cloudinary
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'],
-        transformation: [
-            { width: 500, height: 500, crop: 'limit' }, // Resize images
-            { quality: 'auto' } // Auto optimize quality
-        ]
+    params: (req, file) => {
+        // Check if file is PDF
+        if (file.mimetype === 'application/pdf') {
+            return {
+                folder: 'unifost-hrms/documents',
+                resource_type: 'raw',
+                allowed_formats: ['pdf']
+            };
+        } else {
+            // For images
+            return {
+                folder: 'unifost-hrms/images',
+                allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+                transformation: [
+                    { width: 500, height: 500, crop: 'limit' }, // Resize images
+                    { quality: 'auto' } // Auto optimize quality
+                ]
+            };
+        }
     }
 });
 

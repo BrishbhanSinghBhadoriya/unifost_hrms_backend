@@ -4,7 +4,7 @@ import { getEmployee } from "../controller/employeeController.js";
 import getAttendance, { markAttendance,updateAttendance,deleteAttendance, markBulkAttendance, getTodayAttendanceSummary } from "../controller/attendanceController.js";
 import {createAnnouncement, getAnnouncement, getHrDashboardWithAttendance} from "../controller/hrController.js"
 import {getUpcomingLeave ,deleteEmployee} from "../controller/hrController.js"
-import {getforgetPasswordRequest} from "../controller/hrController.js"
+import {getforgetPasswordRequest,editPassword} from "../controller/hrController.js"
 
 const hrRouter = express.Router();
 hrRouter.get("/getEmployees", authenticateToken, getEmployee);
@@ -20,7 +20,8 @@ hrRouter.post('/createAnnouncement',authenticateToken,createAnnouncement)
 hrRouter.get('/getAnnouncement',authenticateToken,getAnnouncement)
 hrRouter.get('/getTodayAttendanceSummary',authenticateToken,getTodayAttendanceSummary)
 hrRouter.delete('/deleteEmployee/:id',authenticateToken,deleteEmployee)
-hrRouter.post("/getforgetPasswordRequest",getforgetPasswordRequest);
+hrRouter.get("/getforgetPasswordRequest",authenticateToken,getforgetPasswordRequest);
+hrRouter.put("/reset-password",authenticateToken,editPassword)
 
 export default hrRouter;
 

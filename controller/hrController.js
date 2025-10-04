@@ -266,16 +266,48 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       message: "Forget password request fetched successfully"
     });
   }
-  export const editPassword=async(req,res)=>{
-    const { email } = req.params;
-    const { password } = req.body;
-    const user=await User.findByIdAndUpdate(id,{password});
-    res.status(200).json({
-      success: true,
-      user,
-      message: "Password edited successfully"
-    });
-  }
+  export const editPassword = async (req, res) => {
+    try {
+      const { email } = req.params;
+      const { password } = req.body;
+  
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required"
+        });
+      }
+  
+      // Find user by email and update password
+      const user = await User.findOneAndUpdate(
+        { email }, // condition
+        { password }, // new value
+        { new: true } // return updated document
+      );
+  
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User with this email not found"
+        });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        user,
+        message: "Password updated successfully"
+      });
+  
+    } catch (error) {
+      console.error("Error updating password:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
+    }
+  };
+  
   export const deleteforgetPasswordRequest=async(req,res)=>{
     const { id } = req.params;
     const forgetPasswordRequest=await ForgetPasswordRequest.findByIdAndDelete(id);
@@ -285,3 +317,6 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       message: "Forget password request deleted successfully"
     });
   }
+  
+  
+  

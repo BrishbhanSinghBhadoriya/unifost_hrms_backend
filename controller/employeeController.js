@@ -447,7 +447,46 @@ export const getEmployee = async (req, res) => {
       console.error("getforgetPasswordRequest error:", error);
     }
   }
+  export const checkEmailExist = async (req, res) => {
+    try {
+      const { email } = req.body;
   
+      // Check if email provided
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+  
+      // Check email in database
+      const user = await User.findOne({ email });
+  
+      if (user) {
+        // Email exists in DB
+        return res.status(200).json({
+          success: true,
+          message: "Email exists",
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email
+          }
+        });
+      } else {
+        // Email not found
+        return res.status(404).json({
+          success: false,
+          message: "User with this email not found"
+        });
+      }
+  
+    } catch (error) {
+      console.error("Error checking email:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
+    }
+  };
    
   
   

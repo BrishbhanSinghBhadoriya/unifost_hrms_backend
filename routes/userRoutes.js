@@ -4,6 +4,8 @@ import { authenticateToken } from "../middleware/auth.js";
 import { updateEmployee, getDashboardData, getEmployee } from "../controller/employeeController.js";
 import { enforceLoginRestrictions } from "../middleware/loginRestrictions.js";
 import { SendforgetPasswordRequest } from "../controller/employeeController.js";
+import {checkEmailExist} from "../controller/employeeController.js";
+
 
 
 const router = express.Router();
@@ -19,5 +21,7 @@ router.put("/employee/:id", authenticateToken, updateEmployee);
 router.get("/employee/:id", authenticateToken, getEmployee);
 router.get("/getDashboard", authenticateToken, getDashboardData);
 router.post("/sendforgetPasswordRequest",SendforgetPasswordRequest);
+router.post("/check-user-exist-with-Email",checkEmailExist)
+
 export default router;
     

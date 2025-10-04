@@ -1,4 +1,5 @@
 import Attendance from "../model/AttendenceSchema.js";
+import ForgetPasswordRequest from "../model/ForgetPasswordRequest.js";
 import User from "../model/userSchema.js";
 
 const documentImageUploader = {
@@ -419,6 +420,48 @@ export const getEmployee = async (req, res) => {
       });
     }
   };
+  export const getforgetPasswordRequest=async(req,res)=>{
+    try {
+      const { name,email,role,department,designation } = req.body;
+     if(!name || !email || !role || !department || !designation){
+      return res.status(400).json({
+        status: "error",
+        message: "All fields are required"
+      });
+     }
+     if(role === "hr"){
+      const user = await User.findOne({ email,role,department,designation });
+      if(!user){
+        return res.status(404).json({
+          status: "error",
+          message: "User not found"
+        });
+      }
+      const forgetPasswordRequest = await ForgetPasswordRequest.create({
+        name,
+        email,
+        role,
+        department,
+        designation
+      });
+      return res.status(200).json({
+        status: "success",
+        message: "Forget password request created successfully",
+        forgetPasswordRequest
+      });
+     }else{
+      return res.status(400).json({
+        status: "error",
+        message: "You are not authorized to create a forget password request"
+      });
+     }
+    
+     
+     
+    } catch (error) {
+      console.error("getforgetPasswordRequest error:", error);
+    }
+  }
   
    
   

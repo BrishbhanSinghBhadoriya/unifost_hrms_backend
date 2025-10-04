@@ -256,3 +256,30 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       message: "Employee deleted successfully"
     });
   }
+  export const getforgetPasswordRequest=async(req,res)=>{
+    const forgetPasswordRequest=await ForgetPasswordRequest.find();
+    res.status(200).json({
+      success: true,
+      forgetPasswordRequest,
+      message: "Forget password request fetched successfully"
+    });
+  }
+  export const editPassword=async(req,res)=>{
+    const { id } = req.params;
+    const { password } = req.body;
+    const user=await User.findByIdAndUpdate(id,{password});
+    res.status(200).json({
+      success: true,
+      user,
+      message: "Password edited successfully"
+    });
+  }
+  export const deleteforgetPasswordRequest=async(req,res)=>{
+    const { id } = req.params;
+    const forgetPasswordRequest=await ForgetPasswordRequest.findByIdAndDelete(id);
+    res.status(200).json({
+      success: true,
+      forgetPasswordRequest,
+      message: "Forget password request deleted successfully"
+    });
+  }

@@ -17,6 +17,7 @@ router.post("/logout", authenticateToken, logout);
 router.get("/profile", authenticateToken, getUserProfile);
 router.put("/employee/:id", authenticateToken, updateEmployee);
 router.get("/employee/:id", authenticateToken, getEmployee);
+router.get("/getDashboard", authenticateToken, getDashboardData);
 
 export default router;
     

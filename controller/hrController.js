@@ -267,7 +267,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
     });
   }
   export const editPassword=async(req,res)=>{
-    const { id } = req.params;
+    const { email } = req.params;
     const { password } = req.body;
     const user=await User.findByIdAndUpdate(id,{password});
     res.status(200).json({

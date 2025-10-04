@@ -430,13 +430,7 @@ export const getEmployee = async (req, res) => {
       });
      }
      
-      const user = await User.findOne({ email,role,department,designation });
-      if(!user){
-        return res.status(404).json({
-          status: "error",
-          message: "User not found"
-        });
-      }
+      
       const forgetPasswordRequest = await ForgetPasswordRequest.create({
         name,
         email,

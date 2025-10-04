@@ -429,7 +429,7 @@ export const getEmployee = async (req, res) => {
         message: "All fields are required"
       });
      }
-     if(role === "hr"){
+     
       const user = await User.findOne({ email,role,department,designation });
       if(!user){
         return res.status(404).json({
@@ -449,16 +449,8 @@ export const getEmployee = async (req, res) => {
         message: "Forget password request created successfully",
         forgetPasswordRequest
       });
-     }else{
-      return res.status(400).json({
-        status: "error",
-        message: "You are not authorized to create a forget password request"
-      });
      }
-    
-     
-     
-    } catch (error) {
+     catch (error) {
       console.error("getforgetPasswordRequest error:", error);
     }
   }

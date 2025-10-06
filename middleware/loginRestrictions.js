@@ -47,8 +47,12 @@ function getClientIp(req) {
 function getUserIdentifier(req) {
   // Check body for username/email (common in login requests)
   if (req.body) {
-    req.body.username;
-  }
+    console.log( req.body.username)
+    return req.body.username;
+    
+}
+  
+  
   return null;
 }
 

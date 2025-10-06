@@ -12,6 +12,7 @@ const WFH_ALLOWED_USERS = new Set(
     .map((u) => u.trim())
     .filter(Boolean)
 );
+console.log("WFH _ALLowed_Employee",WFH_ALLOWED_USERS)
 
 //  Regex for device detection
 const MOBILE_REGEX = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i;
@@ -62,6 +63,7 @@ export const enforceLoginRestrictions = (req, res, next) => {
       req.body?.email || req.query?.email || req.user?.email || req.user?.username;
 
     const isWfhAllowed = userEmail && WFH_ALLOWED_USERS.has(userEmail);
+    console.log(isWfhAllowed)
 
     //  Step 1: IP Restriction (Skip for WFH users)
     if (!isWfhAllowed && !ALLOWED_IPS.has(clientIp)) {

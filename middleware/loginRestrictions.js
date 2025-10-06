@@ -60,10 +60,12 @@ export const enforceLoginRestrictions = (req, res, next) => {
 
     //  Identify user (depends on your login system)
     const userEmail =
-      req.body?.username || req.query?.username || req.user?.username || req.user?.username;
+      req.body?.username;
 
     const isWfhAllowed = userEmail && WFH_ALLOWED_USERS.has(userEmail);
-    console.log(isWfhAllowed)
+    console.log("WFH_ALLOWED_USERS",WFH_ALLOWED_USERS)
+    console.log("userEmail",userEmail)
+    console.log("isWfhAllowed",isWfhAllowed)
 
     //  Step 1: IP Restriction (Skip for WFH users)
     if (!isWfhAllowed && !ALLOWED_IPS.has(clientIp)) {

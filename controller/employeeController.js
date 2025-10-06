@@ -458,6 +458,7 @@ export const getEmployee = async (req, res) => {
   
       // Check email in database
       const user = await User.findOne({ email });
+      console.log(user);
   
       if (user) {
         // Email exists in DB

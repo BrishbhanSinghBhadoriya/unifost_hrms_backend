@@ -12,10 +12,10 @@ const app = express();
 dotenv.config();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
+app.use(cors({
+	origin: "https://unifost-hrms-frontend-typescript.vercel.app",  // ✅ allow your frontend domain
+	credentials: true, // if using cookies or auth headers
+  }));
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoutes);

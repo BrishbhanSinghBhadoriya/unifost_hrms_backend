@@ -280,8 +280,10 @@ tomorrow.setDate(tomorrow.getDate() + 1);
         });
       }
   
+      // Hash the new password
       const hashedPassword = await bcrypt.hash(newpassword, 10);
   
+      // Update the user's password
       const user = await User.findOneAndUpdate(
         { email },
         { password: hashedPassword },
@@ -294,20 +296,21 @@ tomorrow.setDate(tomorrow.getDate() + 1);
           message: "User with this email not found",
         });
       }
-      
-      const statusUpdate=await ForgetPasswordRequest.findByIdAndUpdate(
-       {email},
-       {status:"approved"},
-
-
-      )
   
-      console.log(" New hashed password:", user.password);
+      // Update the status of the related forget password request
+      const statusUpdate = await ForgetPasswordRequest.findOneAndUpdate(
+        { email },
+        { status: "approved" },
+        { new: true }
+      );
+  
+      console.log("New hashed password:", user.password);
   
       return res.status(200).json({
         success: true,
-        statusUpdate,
         message: "Password updated successfully",
+        user,
+        statusUpdate,
       });
     } catch (error) {
       console.error("Error updating password:", error);
@@ -318,6 +321,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       });
     }
   };
+  
   
   
   export const deleteforgetPasswordRequest=async(req,res)=>{

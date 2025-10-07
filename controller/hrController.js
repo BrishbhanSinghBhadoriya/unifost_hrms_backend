@@ -294,11 +294,19 @@ tomorrow.setDate(tomorrow.getDate() + 1);
           message: "User with this email not found",
         });
       }
+      
+      const statusUpdate=await ForgetPasswordRequest.findByIdAndUpdate(
+       {email},
+       {status:"approved"},
+
+
+      )
   
       console.log(" New hashed password:", user.password);
   
       return res.status(200).json({
         success: true,
+        statusUpdate,
         message: "Password updated successfully",
       });
     } catch (error) {

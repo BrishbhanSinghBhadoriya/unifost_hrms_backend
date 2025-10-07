@@ -11,10 +11,24 @@ import cors from "cors";
 const app = express();
 dotenv.config();
 
-app.use(cors({
-	origin: "https://unifost-hrms-frontend-typescript.vercel.app", 
-	credentials: true, 
-}));
+const allowedOrigins = [
+	"https://unifost-hrms-frontend-typescript.vercel.app",
+	"http://localhost:3000"
+  ];
+  
+  app.use(cors({
+	origin: function(origin, callback){
+	  // allow requests with no origin (like mobile apps, curl)
+	  if(!origin) return callback(null, true);
+	  if(allowedOrigins.indexOf(origin) === -1){
+		const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+		return callback(new Error(msg), false);
+	  }
+	  return callback(null, true);
+	},
+	credentials: true
+  }));
+  
 
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

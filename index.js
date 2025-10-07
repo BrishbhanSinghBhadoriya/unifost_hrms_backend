@@ -13,8 +13,8 @@ dotenv.config();
 
 // Middleware
 app.use(cors({
-	origin: "https://unifost-hrms-frontend-typescript.vercel.app",  // ✅ allow your frontend domain
-	credentials: true, // if using cookies or auth headers
+	origin: "https://unifost-hrms-frontend-typescript.vercel.app", 
+	credentials: true, 
   }));
 // Routes
 app.use("/api/users", userRoutes);

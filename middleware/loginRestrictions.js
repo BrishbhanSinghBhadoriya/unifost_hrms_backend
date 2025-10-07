@@ -47,6 +47,7 @@ function getClientIp(req) {
 function getUserIdentifier(req) {
   // Check body for username/email (common in login requests)
   if (req.body) {
+    console.log(req.body)
     console.log( req.body.username)
     return req.body.username;
     
@@ -56,12 +57,7 @@ function getUserIdentifier(req) {
   return null;
 }
 
-/**
- * Middleware to enforce restrictions:
- * 1. IP restriction (except for WFH allowed users)
- * 2. Only Desktop/Laptop devices allowed
- * 3. Online check (optional via client header)
- */
+
 export const enforceLoginRestrictions = (req, res, next) => {
   try {
     // Get client IP

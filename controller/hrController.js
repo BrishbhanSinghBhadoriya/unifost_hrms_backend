@@ -3,7 +3,7 @@ import Attendance from "../model/AttendenceSchema.js";
 import EmployeeLeave from "../model/EmployeeLeaveSchema.js";
 import Announcement from "../model/AnnouncementSchema.js";
 import ForgetPasswordRequest from "../model/ForgetPasswordRequest.js"
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 
 
 

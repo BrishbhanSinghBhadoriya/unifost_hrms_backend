@@ -271,7 +271,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       const { email ,newpassword} = req.body;
       
   
-      if (!email || !password) {
+      if (!email || !newpassword) {
         return res.status(400).json({
           success: false,
           message: "Email and password are required"

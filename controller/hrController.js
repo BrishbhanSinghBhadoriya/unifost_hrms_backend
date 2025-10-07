@@ -268,10 +268,10 @@ tomorrow.setDate(tomorrow.getDate() + 1);
   }
   export const editPassword = async (req, res) => {
     try {
-      const { email ,password} = req.body;
+      const { email ,newpassword} = req.body;
       
   
-      if (!email) {
+      if (!email || !password) {
         return res.status(400).json({
           success: false,
           message: "Email and password are required"
@@ -281,7 +281,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       // Find user by email and update password
       const user = await User.findOneAndUpdate(
         { email }, 
-        {password},
+        {password:newpassword},
         
         { new: true }
       );

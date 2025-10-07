@@ -3,6 +3,8 @@ import Attendance from "../model/AttendenceSchema.js";
 import EmployeeLeave from "../model/EmployeeLeaveSchema.js";
 import Announcement from "../model/AnnouncementSchema.js";
 import ForgetPasswordRequest from "../model/ForgetPasswordRequest.js"
+import bcrypt from "bcryptjs";
+
 
 
 
@@ -266,48 +268,49 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       message: "Forget password request fetched successfully"
     });
   }
+
   export const editPassword = async (req, res) => {
     try {
-      const { email ,newpassword} = req.body;
-      
+      const { email, newpassword } = req.body;
   
       if (!email || !newpassword) {
         return res.status(400).json({
           success: false,
-          message: "Email and password are required"
+          message: "Email and new password are required",
         });
       }
   
-      // Find user by email and update password
+      const hashedPassword = await bcrypt.hash(newpassword, 10);
+  
       const user = await User.findOneAndUpdate(
-        { email }, 
-        {password:newpassword},
-        
+        { email },
+        { password: hashedPassword },
         { new: true }
       );
   
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: "User with this email not found"
+          message: "User with this email not found",
         });
       }
   
+      console.log(" New hashed password:", user.password);
+  
       return res.status(200).json({
         success: true,
-        user,
-        message: "Password updated successfully"
+        message: "Password updated successfully",
       });
-  
     } catch (error) {
       console.error("Error updating password:", error);
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message
+        error: error.message,
       });
     }
   };
+  
   
   export const deleteforgetPasswordRequest=async(req,res)=>{
     const { id } = req.params;

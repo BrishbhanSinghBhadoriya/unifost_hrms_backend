@@ -268,7 +268,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
   }
   export const editPassword = async (req, res) => {
     try {
-      const { email } = req.body;
+      const { email ,password} = req.body;
       
   
       if (!email) {
@@ -280,9 +280,10 @@ tomorrow.setDate(tomorrow.getDate() + 1);
   
       // Find user by email and update password
       const user = await User.findOneAndUpdate(
-        { email }, // condition
+        { email }, 
+        {password},
         
-        { new: true } // return updated document
+        { new: true }
       );
   
       if (!user) {

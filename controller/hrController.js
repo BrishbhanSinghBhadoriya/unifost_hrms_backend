@@ -303,6 +303,14 @@ tomorrow.setDate(tomorrow.getDate() + 1);
         { status: "approved" },
         { new: true }
       );
+      if(statusUpdate)
+      {
+        return res.json({
+          statusUpdate,
+          success:true,
+        message:"Status is Approved"
+        })
+      }
   
       console.log("New hashed password:", user.password);
   
@@ -310,7 +318,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
         success: true,
         message: "Password updated successfully",
         user,
-        statusUpdate,
+        
       });
     } catch (error) {
       console.error("Error updating password:", error);

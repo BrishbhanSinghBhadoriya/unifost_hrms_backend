@@ -11,17 +11,14 @@ import cors from "cors";
 const app = express();
 dotenv.config();
 
-// ✅ CORS Middleware (first)
 app.use(cors({
 	origin: "https://unifost-hrms-frontend-typescript.vercel.app", 
 	credentials: true, 
 }));
 
-// ✅ Body Parser Middleware (CRITICAL - must come before routes)
-app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse URL-encoded bodies
+app.use(express.json({ limit: '10mb' })); 
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ✅ Routes (after body parsers)
 app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/leaves", leaveRoutes);

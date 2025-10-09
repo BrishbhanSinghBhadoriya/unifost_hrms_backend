@@ -328,7 +328,7 @@ export const logout = async (req, res) => {
         await attendance.save();
 
         if (user.token) {
-            user.token = null;
+            // user.token = null;
             await user.save();
         }
 

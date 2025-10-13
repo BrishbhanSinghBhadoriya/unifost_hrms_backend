@@ -7,7 +7,8 @@ const ALLOWED_IPS = new Set(["45.116.117.147", "103.248.119.226"]);
 const WFH_ALLOWED_USERS = new Set([
   "pratik.kaul@unifostedu.com",
   "rupam.priya@unifostedu.com",
-  "neha.suman@unifostedu.com"
+  "neha.suman@unifostedu.com",
+   "kajal.patil@unifostedu.com",
 ]);
 
 // Regex checks for device types

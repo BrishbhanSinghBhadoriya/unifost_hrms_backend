@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 const AnnouncementSchema = new mongoose.Schema({    
     subject: { type: String, required: true },
-    audience: { type: String, required: true },
+    targetAudience: { type: [String], enum: ["all", "employee", "manager", "hr", "admin"], default: "all", required: true },
     publishedDate: { type: Date, required: true },
     expiryDate: { type: Date, required: true },
     body: { type: String, required: true },

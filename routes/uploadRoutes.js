@@ -42,4 +42,6 @@ router.post('/document/:id', authenticateToken, uploadAny, handleUploadError, up
 // Upload multiple documents for employee
 router.post('/employee/:id/documents', authenticateToken, uploadMultiple, handleUploadError, updateEmployeeDocuments);
 
+// Upload announcement image
+
 export default router;

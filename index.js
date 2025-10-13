@@ -5,6 +5,7 @@ import userRoutes from "./routes/userRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
 import hrRouter from "./routes/hrRoutes.js";
+import announcementRoutes from "./routes/announcementRoutes.js";
 
 import cors from "cors";
 
@@ -37,6 +38,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/hr", hrRouter);
+app.use("/api/announcement", announcementRoutes);
 
 app.get('/', (req, res) => {
 	res.send("Hello World by hrms ");

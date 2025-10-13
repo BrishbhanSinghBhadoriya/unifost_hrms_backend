@@ -1,5 +1,6 @@
 import User from '../model/userSchema.js';
 import cloudinary from '../config/cloudinary.js';
+import Announcement from '../model/AnnouncementSchema.js';
 
 // Upload single image
 export const uploadSingleImage = async (req, res) => {
@@ -30,7 +31,7 @@ export const uploadSingleImage = async (req, res) => {
 
         res.status(200).json({
             status: 'success',
-            message: 'Image uploaded succe ssfully',
+            message: 'Image uploaded successfully',
             data: {
                 imageUrl: req.file.path,
                 publicId: req.file.filename,
@@ -220,4 +221,6 @@ export const updateProfilePicture = async (req, res) => {
             error: error.message
         });
     }
+
 };
+

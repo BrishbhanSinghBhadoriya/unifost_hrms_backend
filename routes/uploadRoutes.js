@@ -4,7 +4,9 @@ import {
     uploadMultipleImages, 
     deleteImage, 
     getImageInfo,
-    updateProfilePicture 
+    updateProfilePicture ,
+    multipleuploadImages,
+    multipleuploadDocuments
 } from '../controller/uploadController.js';
 import { updateEmployeeDocuments, uploadSingleDocument } from '../controller/employeeController.js';
 
@@ -41,6 +43,9 @@ router.post('/document/:id', authenticateToken, uploadAny, handleUploadError, up
 
 // Upload multiple documents for employee
 router.post('/employee/:id/documents', authenticateToken, uploadMultiple, handleUploadError, updateEmployeeDocuments);
+
+router.post('/upload-one-multiple-image',authenticateToken,uploadMultiple,handleUploadError,multipleuploadImages);
+router.post('/upload-one-multiple-documents',authenticateToken,uploadMultiple,handleUploadError,multipleuploadDocuments)
 
 // Upload announcement image
 

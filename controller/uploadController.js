@@ -88,6 +88,202 @@ export const uploadMultipleImages = async (req, res) => {
         });
     }
 };
+export const multipleuploadImages = async (req, res) => {
+    try {
+        // Check if files are provided
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'No images provided'
+            });
+        }
+
+        const uploadedImages = [];
+        const allowedImageMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
+        // Process each image
+        for (const file of req.files) {
+            try {
+                // Validate image type
+                if (!allowedImageMimes.includes(file.mimetype)) {
+                    try { await fs.unlink(file.path); } catch (e) { }
+                    return res.status(400).json({
+                        status: 'error',
+                        message: `Invalid file type: ${file.originalname}. Allowed: JPEG, JPG, PNG, GIF, WEBP`
+                    });
+                }
+
+                // Upload to Cloudinary
+                const result = await cloudinary.uploader.upload(file.path, {
+                    folder: 'unifost-hrms/images',
+                    resource_type: 'image'
+                });
+
+                uploadedImages.push({
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                    originalName: file.originalname,
+                    size: result.bytes,
+                    format: result.format
+                });
+
+                // Cleanup local file
+                try { await fs.unlink(file.path); } catch (e) { }
+
+            } catch (uploadError) {
+                console.error(`Error uploading ${file.originalname}:`, uploadError);
+                // Cleanup local file
+                try { await fs.unlink(file.path); } catch (e) { }
+                
+                // If any upload fails, cleanup already uploaded images
+                for (const uploaded of uploadedImages) {
+                    try {
+                        await cloudinary.uploader.destroy(uploaded.publicId);
+                    } catch (e) { }
+                }
+
+                return res.status(500).json({
+                    status: 'error',
+                    message: `Failed to upload ${file.originalname}`,
+                    error: uploadError.message
+                });
+            }
+        }
+
+        res.status(200).json({
+            status: 'success',
+            message: `${uploadedImages.length} image(s) uploaded successfully`,
+            data: {
+                images: uploadedImages,
+                count: uploadedImages.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Upload images error:', error);
+        
+        // Cleanup any local files
+        if (req.files) {
+            for (const file of req.files) {
+                try { await fs.unlink(file.path); } catch (e) { }
+            }
+        }
+
+        res.status(500).json({
+            status: 'error',
+            message: 'Error uploading images',
+            error: error.message
+        });
+    }
+};
+
+export const multipleuploadDocuments = async (req, res) => {
+    try {
+        // Check if files are provided
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'No documents provided'
+            });
+        }
+
+        const uploadedDocuments = [];
+        const allowedDocMimes = [
+            'application/pdf',
+            'application/msword', // .doc
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+            'application/vnd.ms-excel', // .xls
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'text/plain', // .txt
+            'application/vnd.ms-powerpoint', // .ppt
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation' // .pptx
+        ];
+
+        // Process each document
+        for (const file of req.files) {
+            try {
+                // Validate document type
+                if (!allowedDocMimes.includes(file.mimetype)) {
+                    try { await fs.unlink(file.path); } catch (e) { }
+                    return res.status(400).json({
+                        status: 'error',
+                        message: `Invalid file type: ${file.originalname}. Allowed: PDF, DOC, DOCX, XLS, XLSX, TXT, PPT, PPTX`
+                    });
+                }
+
+                // Optional: Check file size (e.g., max 10MB)
+                const maxSize = 10 * 1024 * 1024; // 10MB
+                if (file.size > maxSize) {
+                    try { await fs.unlink(file.path); } catch (e) { }
+                    return res.status(400).json({
+                        status: 'error',
+                        message: `File too large: ${file.originalname}. Max size: 10MB`
+                    });
+                }
+
+                // Upload to Cloudinary
+                const result = await cloudinary.uploader.upload(file.path, {
+                    folder: 'unifost-hrms/documents',
+                    resource_type: 'auto' // auto detects file type
+                });
+
+                uploadedDocuments.push({
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                    originalName: file.originalname,
+                    size: result.bytes,
+                    format: result.format
+                });
+
+                // Cleanup local file
+                try { await fs.unlink(file.path); } catch (e) { }
+
+            } catch (uploadError) {
+                console.error(`Error uploading ${file.originalname}:`, uploadError);
+                // Cleanup local file
+                try { await fs.unlink(file.path); } catch (e) { }
+                
+                // If any upload fails, cleanup already uploaded documents
+                for (const uploaded of uploadedDocuments) {
+                    try {
+                        await cloudinary.uploader.destroy(uploaded.publicId, { resource_type: 'raw' });
+                    } catch (e) { }
+                }
+
+                return res.status(500).json({
+                    status: 'error',
+                    message: `Failed to upload ${file.originalname}`,
+                    error: uploadError.message
+                });
+            }
+        }
+
+        res.status(200).json({
+            status: 'success',
+            message: `${uploadedDocuments.length} document(s) uploaded successfully`,
+            data: {
+                documents: uploadedDocuments,
+                count: uploadedDocuments.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Upload documents error:', error);
+        
+        // Cleanup any local files
+        if (req.files) {
+            for (const file of req.files) {
+                try { await fs.unlink(file.path); } catch (e) { }
+            }
+        }
+
+        res.status(500).json({
+            status: 'error',
+            message: 'Error uploading documents',
+            error: error.message
+        });
+    }
+};
 
 // Delete image from Cloudinary
 export const deleteImage = async (req, res) => {

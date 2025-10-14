@@ -5,8 +5,8 @@ const AnnouncementSchema = new mongoose.Schema({
     publishedDate: { type: Date, required: true },
     expiryDate: { type: Date, required: true },
     body: { type: String, required: true },
-    image: { type: String,  },
-    document: { type: String,  },
+    image: { type: [String],  },
+    document: { type: [String],  },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     createdAt: { type: Date, default: Date.now },
 

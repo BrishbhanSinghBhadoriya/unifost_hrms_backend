@@ -2,7 +2,9 @@ import Announcement from "../model/AnnouncementSchema.js";
 import cloudinary from "../config/cloudinary.js";
 
 export const createAnnouncement = async (req, res) => {
-        const { subject,targetAudience, publishedDate, expiryDate, body,imageurl,documenturl } = req.body;
+        const { subject, targetAudience, publishedDate, expiryDate, body } = req.body;
+        const imageUrl = req.body.image || req.body.imageurl || req.body.imageUrl;
+        const documentUrl = req.body.document || req.body.documenturl || req.body.documentUrl;
         if (!subject || !targetAudience || !publishedDate || !expiryDate || !body) {
             return res.status(400).json({
                 status: 'error',
@@ -16,7 +18,16 @@ export const createAnnouncement = async (req, res) => {
                 message: 'User id is required'
             });
         }
-        const announcement = await Announcement.create({ subject,targetAudience, publishedDate, expiryDate, body,image:imageurl,document:documenturl,createdBy:userId });
+        const announcement = await Announcement.create({ 
+            subject,
+            targetAudience,
+            publishedDate,
+            expiryDate,
+            body,
+            image: imageUrl || undefined,
+            document: documentUrl || undefined,
+            createdBy: userId 
+        });
         res.status(201).json({
             status: 'success',
             message: 'Announcement created successfully',
@@ -33,8 +44,16 @@ export const createAnnouncement = async (req, res) => {
     }
     export const updateAnnouncement = async (req, res) => {
         const { id } = req.params;
-        const { subject,targetAudience, publishedDate, expiryDate, body } = req.body;
-        const announcement = await Announcement.findByIdAndUpdate(id, { subject,targetAudience, publishedDate, expiryDate, body }, { new: true });
+        const { subject, targetAudience, publishedDate, expiryDate, body } = req.body;
+        const imageUrl = req.body.image || req.body.imageurl || req.body.imageUrl;
+        const documentUrl = req.body.document || req.body.documenturl || req.body.documentUrl;
+
+        // Build updates only with provided fields
+        const updates = { subject, targetAudience, publishedDate, expiryDate, body };
+        if (imageUrl !== undefined) updates.image = imageUrl;
+        if (documentUrl !== undefined) updates.document = documentUrl;
+
+        const announcement = await Announcement.findByIdAndUpdate(id, updates, { new: true });
         res.status(200).json({
             status: 'success',
             message: 'Announcement updated successfully',

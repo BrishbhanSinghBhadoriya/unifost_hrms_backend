@@ -32,9 +32,9 @@ export const createAnnouncement = async (req, res) => {
         });
     }
     export const updateAnnouncement = async (req, res) => {
-        const { publicId } = req.params;
+        const { id } = req.params;
         const { subject,targetAudience, publishedDate, expiryDate, body } = req.body;
-        const announcement = await Announcement.findByIdAndUpdate(publicId, { subject,targetAudience, publishedDate, expiryDate, body }, { new: true });
+        const announcement = await Announcement.findByIdAndUpdate(id, { subject,targetAudience, publishedDate, expiryDate, body }, { new: true });
         res.status(200).json({
             status: 'success',
             message: 'Announcement updated successfully',
@@ -42,8 +42,8 @@ export const createAnnouncement = async (req, res) => {
         });
     }
     export const deleteAnnouncement = async (req, res) => {
-        const { publicId } = req.params;
-        const announcement = await Announcement.findByIdAndDelete(publicId);
+        const { id } = req.params;
+        const announcement = await Announcement.findByIdAndDelete(id);
         res.status(200).json({
             status: 'success',
             message: 'Announcement deleted successfully',
@@ -51,8 +51,12 @@ export const createAnnouncement = async (req, res) => {
         });
     }
     export const getAnnouncementById=async(req,res)=>{
-      const id=req.params.id;
-      const announcement=await Announcement.findById({id});
+      const raw = req.params?.id || req.query?.id || req.body?.id;
+      const id = typeof raw === 'object' && raw !== null ? (raw.id || raw._id) : raw;
+      if (!id) {
+        return res.status(400).json({ success:false, message:"Announcement id is required" });
+      }
+      const announcement=await Announcement.findById(id);
       if(!announcement)
       {
         return res.status(404).json({

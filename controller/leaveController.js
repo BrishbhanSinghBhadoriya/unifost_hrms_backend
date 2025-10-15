@@ -38,6 +38,7 @@ export const createLeave = async (req, res) => {
 		console.log(req.user);
 		const role=req.user.role
 		const employeeName = req.user && req.user.name;
+		const department = req.user && req.user.department;
 
 		if (!userId) {
 			return res.status(401).json({ status: "error", message: "Authentication required" });
@@ -67,6 +68,7 @@ export const createLeave = async (req, res) => {
 			employeeId: userId,
 			employeeName: employeeName,
 			employeeRole:role,
+			department:department,
 			leaveType,
 			reason,
 			startDate,

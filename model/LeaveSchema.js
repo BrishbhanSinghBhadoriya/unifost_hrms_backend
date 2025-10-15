@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const LeaveSchema = new mongoose.Schema({
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+    
     leaveType: { type: String, enum: ["Casual", "Sick", "Earned", "Maternity"] },
     role:{type:String,required:true},
     startDate: Date,

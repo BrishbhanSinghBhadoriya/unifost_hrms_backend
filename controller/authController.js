@@ -222,9 +222,9 @@ export const login = async (req, res) => {
             attendance = new Attendance({
                 employeeId: user._id,
                 employeeName: user.name,
+                department: user.department,
                 profilePhoto: user.profilePicture || null,
                 date: istDate,
-                // Store as ISO string due to current schema using String for times
                 checkIn: nowIST.toISOString(),
                 status: isLate ? "late" : "present"
             });

@@ -13,7 +13,7 @@ const parseDateFlexible = (value) => {
 		const d = parseInt(dm[1], 10);
 		const m = parseInt(dm[2], 10) - 1;
 		let y = parseInt(dm[3], 10);
-		if (y < 100) y += 2000; // handle 2-digit year
+		if (y < 100) y += 2000; 
 		return new Date(y, m, d);
 	}
 	// yyyy-mm-dd or ISO

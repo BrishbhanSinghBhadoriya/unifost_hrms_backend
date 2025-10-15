@@ -224,105 +224,110 @@ export const updateEmployeeDocuments = async (req, res) => {
     }
 };
 export const getEmployee = async (req, res) => {
-    try {
-      const employeeId = req.params.id;
-      
-      // If employeeId is provided, return single employee
-      if (employeeId) {
-        const employee = await User.findById(employeeId).select('-password');
-        
-        if (!employee) {
-          return res.status(404).json({
-            success: false,
-            message: "Employee not found"
-          });
-        }
-        
-        return res.status(200).json({
-          success: true,
-          data: employee,
-          message: "Employee data fetched successfully"
+  try {
+    const employeeId = req.params.id;
+
+    // --- Case 1: If specific employee ID is passed ---
+    if (employeeId) {
+      const employee = await User.findById(employeeId).select('-password');
+
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found"
         });
       }
-      
-      // If no employeeId, return paginated list
-      let { page, limit, sortBy, sortOrder, search, department, status } = req.query;
-  
-      // Set default values and validation
-      page = parseInt(page) || 1;
-      limit = parseInt(limit) || 10;
-      
-      if (page < 1) page = 1;
-      if (limit < 1 || limit > 100) limit = 10; // Max 100 records per page
-  
-      const skip = (page - 1) * limit;
-  
-      // Build dynamic query with search and filters
-      let query = {  };
-  
-      if (search) {
-        query.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { empCode: { $regex: search, $options: 'i' } }
-        ];
-      }
-  
-      if (department && department !== 'all') {
-        query.department = department;
-      }
-  
-      if (status && status !== 'all') {
-        query.status = status;
-      }
-  
-      // Build sort object
-      let sort = {};
-      if (sortBy) {
-        sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
-      } else {
-        sort.createdAt = -1; // Default sort
-      }
-  
-      // Get total count and paginated data
-      const totalEmployees = await User.countDocuments(query);
-      const totalPages = Math.ceil(totalEmployees / limit);
-      const hasNextPage = page < totalPages;
-      const hasPrevPage = page > 1;
-  
-      const employees = await User.find(query)
-        .select('-password')
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean();
-  
-      // Return structured response
-      res.status(200).json({
+
+      return res.status(200).json({
         success: true,
-        data: employees,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalEmployees,
-          limit,
-          hasNextPage,
-          hasPrevPage,
-          nextPage: hasNextPage ? page + 1 : null,
-          prevPage: hasPrevPage ? page - 1 : null
-        },
+        data: employee,
         message: "Employee data fetched successfully"
       });
-  
-    } catch (error) {
-      console.error("getEmployee error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch employees",
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-      });
     }
-  };  
+
+    // --- Case 2: Get paginated list ---
+    let { page, limit, sortBy, sortOrder, search, department, status } = req.query;
+
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1 || limit > 100) limit = 10;
+
+    const skip = (page - 1) * limit;
+
+    // ✅ Base query
+    let query = {};
+
+    // 🔹 If logged-in user is manager → restrict by department
+    if (req.user?.role === "manager") {
+      query.department = req.user.department; // e.g. "sales"
+    }
+
+    // 🔹 Apply search filter
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { empCode: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // 🔹 Apply department filter from query (only for non-managers)
+    if (department && department !== 'all' && req.user?.role !== "manager") {
+      query.department = department;
+    }
+
+    // 🔹 Apply status filter
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Sort setup
+    let sort = {};
+    if (sortBy) {
+      sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sort.createdAt = -1;
+    }
+
+    const totalEmployees = await User.countDocuments(query);
+    const totalPages = Math.ceil(totalEmployees / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    const employees = await User.find(query)
+      .select('-password')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: employees,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalEmployees,
+        limit,
+        hasNextPage,
+        hasPrevPage,
+        nextPage: hasNextPage ? page + 1 : null,
+        prevPage: hasPrevPage ? page - 1 : null
+      },
+      message: "Employee data fetched successfully"
+    });
+
+  } catch (error) {
+    console.error("getEmployee error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch employees",
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+  
   export const getDashboardData = async (req, res) => {
     try {
       const targetUserId = req.params.id || (req.user && req.user._id);

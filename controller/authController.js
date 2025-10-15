@@ -6,7 +6,6 @@ import Attendance from "../model/AttendenceSchema.js";
 import moment from "moment-timezone";
 dotenv.config();
 
-// Parse flexible date strings like dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, ISO
 const parseFlexibleDate = (value) => {
     if (!value) return null;
     if (value instanceof Date && !isNaN(value.getTime())) return value;
@@ -55,7 +54,6 @@ export const register = async (req, res) => {
     }
 
     try {
-        // Check if user already exists by username/email
         const existingUser = await User.findOne({
             $or: [
                 { username },
@@ -78,11 +76,7 @@ export const register = async (req, res) => {
         const pad = (num) => (num < 10 ? `0${num}` : `${num}`);
         if (!finalEmployeeId || typeof finalEmployeeId !== "string" || finalEmployeeId.trim().length === 0) {
             let counter = await User.countDocuments({}) + 1;
-            // Ensure uniqueness in case of concurrent creates or deleted users
-            // Try increasing numbers until we find a free one
-            // Format: UNI01, UNI02, ... UNI10, etc.
-            // If more than 99, it will naturally be UNI100, UNI101, ...
-            // Avoid infinite loop with a sane cap
+           
             for (let attempts = 0; attempts < 10000; attempts++) {
                 const candidate = `${prefix}${pad(counter)}`;
                 const exists = await User.exists({ employeeId: candidate });

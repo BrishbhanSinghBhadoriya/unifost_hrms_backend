@@ -104,22 +104,53 @@ export const myLeaves = async (req, res) => {
 // Admin: list all leaves
 export const listAllLeaves = async (req, res) => {
 	try {
-		const requester = req.user;
-		if(req.role=='hr')
-		{
-		if (!requester || requester.role !== "admin") {
-			return res.status(403).json({ status: "error", message: "Admin only" });
-		}
-	    }
-
-		const leaves = await EmployeeLeave.find().populate("employeeId", "username name employeeId department").sort({ createdAt: -1 });
-		return res.status(200).json({ status: "success", leaves });
+	  const requester = req.user; // comes from verifyToken middleware
+  
+	  if (!requester) {
+		return res.status(401).json({ status: "error", message: "Unauthorized" });
+	  }
+  
+	  let query = {};
+  
+	  // 🔹 Role-based filter logic
+	  if (requester.role === "manager") {
+		// Manager → sirf apne department ke leaves
+		query.department = requester.department;
+	  }
+	  else if (requester.role === "hr") {
+		// HR → sabhi departments dekh sakti hai (no filter)
+		query = {};
+	  }
+	  else if (requester.role === "admin") {
+		// Admin → sab kuch dekh sakta hai
+		query = {};
+	  }
+	  else {
+		// Normal employee → sirf apne leaves dekhe
+		query.employeeId = requester._id;
+	  }
+  
+	  // 🔹 Fetch leaves according to role-based filter
+	  const leaves = await EmployeeLeave.find(query)
+		.populate("employeeId", "username name employeeId department")
+		.sort({ createdAt: -1 });
+  
+	  return res.status(200).json({
+		status: "success",
+		leaves,
+		message: "Leaves fetched successfully",
+	  });
+  
 	} catch (error) {
-		console.error("listAllLeaves error:", error);
-		return res.status(500).json({ status: "error", message: "Failed to fetch leaves", error: error.message });
+	  console.error("listAllLeaves error:", error);
+	  return res.status(500).json({
+		status: "error",
+		message: "Failed to fetch leaves",
+		error: error.message,
+	  });
 	}
-};
-
+  };
+  
 export const approveLeave = async (req, res) => {
 	try {
 		const requester = req.user;

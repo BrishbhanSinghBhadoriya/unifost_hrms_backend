@@ -49,27 +49,28 @@ export const getHrDashboardWithAttendance = async (req, res) => {
     try {
       const requester = req.user;
   
-      // 🔹 Only HR can access this route
-      if (!requester || requester.role !== "hr") {
+     
+      if (!requester || requester.role !== "hr" && requester.role !== "manager") {
         return res.status(403).json({
           status: "error",
           message: "Only HR has permission to access this route"
         });
       }
   
-      // ================================
-      // 1. Employee Stats
-      // ================================
       const now = new Date();
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
   
-      const [employeeCount, newJoinersCount, pendingLeavesCount] =
+      const [employeeCount,departmentwiseEmployeeCount, newJoinersCount, pendingLeavesCount] =
         await Promise.all([
           User.countDocuments({}),
+          User.countDocuments({ department: requester.department }),
           User.countDocuments({ joiningDate: { $gte: oneMonthAgo, $lte: now } }),
-          EmployeeLeave.countDocuments({ status: "pending" })
+          EmployeeLeave.countDocuments({ status: "pending" }),
+         
         ]);
+        console.log(requester.department)
+
   
       
       const today = new Date();
@@ -98,8 +99,29 @@ tomorrow.setDate(tomorrow.getDate() + 1);
       }
 
       const presentCount = await Attendance.countDocuments({
+
         date: { $gte: rangeStart, $lt: rangeEnd },
         status: "present"
+      });
+      const departmentwisePresentCount = await Attendance.countDocuments({
+        date: { $gte: rangeStart, $lt: rangeEnd },
+        status: "present",
+        department: requester.department
+      });
+      const departmentwiseAbsentCount = await Attendance.countDocuments({
+        date: { $gte: rangeStart, $lt: rangeEnd },
+        status: "absent",
+        department: requester.department
+      });
+      const departmentwiseLateCount = await Attendance.countDocuments({
+        date: { $gte: rangeStart, $lt: rangeEnd },
+        status: "late",
+        department: requester.department
+      });
+      const departmentwiseOnLeaveCount = await Attendance.countDocuments({
+        date: { $gte: rangeStart, $lt: rangeEnd },
+        status: "late",
+        department: requester.department
       });
       
       const absentCount = await Attendance.countDocuments({
@@ -144,6 +166,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
         success: true,
         stats: {
           totalEmployees: employeeCount,
+          departmentwiseEmployees: departmentwiseEmployeeCount,
           newJoiners: newJoinersCount,
           pendingLeaves: pendingLeavesCount
         },
@@ -151,7 +174,11 @@ tomorrow.setDate(tomorrow.getDate() + 1);
           present: presentCount,
           absent: absentCount,
           late: lateCount,
-          records: attendance
+          records: attendance,
+          departmentwisePresent: departmentwisePresentCount,
+          departmentwiseAbsent: departmentwiseAbsentCount,
+          departmentwiseLate: departmentwiseLateCount,
+          departmentwiseOnLeave: departmentwiseOnLeaveCount
         },
         birthdays: upcomingBirthdays,
         message:

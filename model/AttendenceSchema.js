@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 const AttendanceSchema = new mongoose.Schema({
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    employeeName: String,
-    profilePhoto: { type: String, default: null }, // URL or path to profile photo
+    employeeName: {type:String,default:""},
+    department: {type:String,default:""},
+    profilePhoto: { type: String, default: null },
     date: { type: Date, required: true },
     checkIn: { type: String, default: null },
     checkOut: { type: String, default: null },
@@ -22,6 +23,7 @@ AttendanceSchema.pre("findOne", autopopulateEmployee);
 AttendanceSchema.pre("findById", autopopulateEmployee);
 AttendanceSchema.pre("findOneAndUpdate", function(next) {
   this.populate("employeeId", employeeSelect);
+
   next();
 });
   const Attendance = mongoose.model("Attendance", AttendanceSchema);

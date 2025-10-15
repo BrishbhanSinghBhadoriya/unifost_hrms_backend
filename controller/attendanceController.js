@@ -133,13 +133,19 @@ export const markAttendance = async (req, res) => {
 const getAttendance = async (req, res) => {
     try {
         const userId = req.user._id;
-        const userRole = req.user.role; // assume 'employee' or 'hr'
+        const userRole = req.user.role;
+        console.log(userRole)
+        // assume 'employee' or 'hr'
 
         let filter = {};
         if (userRole === 'employee') {
             // employee ko sirf apna record dikhaye
             filter = { employeeId: userId };
         } 
+        if (userRole ==='manager') {
+            console.log("department",req.user.department)
+            filter = { department: req.user.department };
+        }
         // HR ya admin ko filter empty chhod do → sabka attendance milega
 
         const records = await Attendance.find(filter)

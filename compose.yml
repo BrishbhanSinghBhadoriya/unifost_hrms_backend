@@ -1,0 +1,8 @@
+services:
+  img:
+    build: .
+    container_name: unifost-hrms-backend_container  
+      
+    ports:
+      - "5001:5001"
+    

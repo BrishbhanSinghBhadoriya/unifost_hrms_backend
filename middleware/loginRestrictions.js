@@ -65,6 +65,8 @@ export const enforceLoginRestrictions = (req, res, next) => {
 
     // *************  NEW: SCREEN SIZE VALIDATION  *************
     const deviceWidth = Number(req.body.deviceWidth);
+    console.log("deviceWidth",deviceWidth);
+
 
     if (!deviceWidth) {
       return res.status(403).json({
@@ -75,6 +77,7 @@ export const enforceLoginRestrictions = (req, res, next) => {
 
     // Mobile screens (even in desktop-mode) are < 800px
     if(MOBILE_ALLOWED_USERS.has(userIdentifier)){
+      console.log("Mobile allowed users");
       return next();
     }
     else{

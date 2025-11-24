@@ -64,11 +64,17 @@ export const enforceLoginRestrictions = (req, res, next) => {
     }
 
     // *************  NEW: SCREEN SIZE VALIDATION  *************
-    const deviceWidth = Number(req.body.deviceWidth);
-    console.log("deviceWidth",deviceWidth);
+    const rawDeviceWidth =
+      req.body.deviceWidth ?? req.headers["x-device-width"] ?? null;
+    const deviceWidth =
+      rawDeviceWidth !== null && rawDeviceWidth !== ""
+        ? Number(rawDeviceWidth)
+        : null;
+    const hasValidDeviceWidth = Number.isFinite(deviceWidth);
 
+    console.log("deviceWidth", deviceWidth);
 
-    if (!deviceWidth) {
+    if (!hasValidDeviceWidth && (isMobile || isTablet || isTv)) {
       return res.status(403).json({
         status: "error",
         message: "Device width missing. Please update your app.",
@@ -81,7 +87,7 @@ export const enforceLoginRestrictions = (req, res, next) => {
       return next();
     }
     else{
-      if(deviceWidth < 800){
+      if(hasValidDeviceWidth && deviceWidth < 800){
         return res.status(403).json({
           status: "error",
           message: "Login not allowed from mobile or desktop-mode browser.",

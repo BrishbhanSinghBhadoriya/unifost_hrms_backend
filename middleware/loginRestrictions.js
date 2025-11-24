@@ -1,79 +1,45 @@
 // middleware/restrictLogin.js
 
-// Allowed IPs (Static IPs from ISP/Office)
 const ALLOWED_IPS = new Set(["45.116.117.147", "103.248.119.226"]);
 
-// WFH Users - These users can login from any IP
 const WFH_ALLOWED_USERS = new Set([
-  "pratik.kaul@unifostedu.com",
   "rupam.priya@unifostedu.com",
   "neha.suman@unifostedu.com",
-   "kajal.patil@unifostedu.com",
+  "kajal.patil@unifostedu.com",
+]);
+const MOBILE_ALLOWED_USERS = new Set([
+  "alka.unifost@gmail.com",
+  "anjli.unifost@gmail.com"
+  
 ]);
 
-// Regex checks for device types
 const MOBILE_REGEX = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i;
 const TABLET_REGEX = /iPad|Tablet|Nexus 7|Nexus 10|SM-T\w+|Kindle|Silk/i;
 const TV_REGEX = /SmartTV|AppleTV|HbbTV|NetCast|Tizen|Web0S|webOS.TV|Viera|BRAVIA|DTV/i;
 
-/**
- * Get client IP safely from req.ip / x-forwarded-for / socket
- */
 function getClientIp(req) {
-  let ip = "";
+  let ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
+           req.ip ||
+           req.connection?.remoteAddress ||
+           req.socket?.remoteAddress ||
+           "";
 
-  // Prefer x-forwarded-for (when behind proxy/load balancer)
-  const xff = req.headers["x-forwarded-for"];
-  if (typeof xff === "string" && xff.length > 0) {
-    ip = xff.split(",")[0].trim();
-  } else if (req.ip) {
-    ip = req.ip;
-  } else if (req.connection?.remoteAddress) {
-    ip = req.connection.remoteAddress;
-  } else if (req.socket?.remoteAddress) {
-    ip = req.socket.remoteAddress;
-  }
-
-  // Normalize IPv6-mapped IPv4 (::ffff:1.2.3.4 → 1.2.3.4)
-  if (ip.startsWith("::ffff:")) {
-    ip = ip.replace("::ffff:", "");
-  }
-
+  if (ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
   return ip;
 }
 
-/**
- * Get username/email from request body or auth header
- */
 function getUserIdentifier(req) {
-  // Check body for username/email (common in login requests)
-  if (req.body) {
-    console.log(req.body)
-    console.log( req.body.username)
-    return req.body.username;
-    
+  return req.body?.username?.toLowerCase() || null;
 }
-  
-  
-  return null;
-}
-
 
 export const enforceLoginRestrictions = (req, res, next) => {
   try {
-    // Get client IP
     const clientIp = getClientIp(req);
-    console.log("Detected client IP:", clientIp);
-    console.log("X-Forwarded-For:", req.headers["x-forwarded-for"], "req.ip:", req.ip);
-
-    // Get user identifier (email/username)
     const userIdentifier = getUserIdentifier(req);
-    console.log("User identifier:", userIdentifier);
 
-    // Check if user is in WFH allowed list
-    const isWfhUser = userIdentifier && WFH_ALLOWED_USERS.has(userIdentifier.toLowerCase());
+    const isWfhUser = userIdentifier && WFH_ALLOWED_USERS.has(userIdentifier);
 
-    // Restrict by IP (skip check for WFH users)
+    // IP Restriction
     if (!isWfhUser && !ALLOWED_IPS.has(clientIp)) {
       return res.status(403).json({
         status: "error",
@@ -82,37 +48,51 @@ export const enforceLoginRestrictions = (req, res, next) => {
       });
     }
 
-    // Log if WFH user is bypassing IP check
-    if (isWfhUser && !ALLOWED_IPS.has(clientIp)) {
-      console.log(`WFH user ${userIdentifier} logging in from IP: ${clientIp}`);
-    }
-
-    // Restrict by Device Type (applies to all users)
+    // Device Type Restriction (User-Agent)
     const ua = req.headers["user-agent"] || "";
     const isMobile = MOBILE_REGEX.test(ua);
     const isTablet = TABLET_REGEX.test(ua);
     const isTv = TV_REGEX.test(ua);
 
+
     if (isMobile || isTablet || isTv) {
       return res.status(403).json({
         status: "error",
-        message: "Login is allowed only from desktop/laptop devices",
+        message: "Login allowed only from laptop/desktop (Mobile detected)",
         details: { userAgent: ua }
       });
     }
 
-    // (Optional) Client must confirm online state via header
-    // Uncomment this if you also want to enforce navigator.onLine check
-    /*
-    const clientOnlineHeader = String(req.headers["x-client-online"] || "").toLowerCase();
-    if (clientOnlineHeader && clientOnlineHeader !== "true") {
-      return res.status(403).json({ status: "error", message: "Client reported offline state" });
+    // *************  NEW: SCREEN SIZE VALIDATION  *************
+    const deviceWidth = Number(req.body.deviceWidth);
+
+    if (!deviceWidth) {
+      return res.status(403).json({
+        status: "error",
+        message: "Device width missing. Please update your app.",
+      });
     }
-    */
+
+    // Mobile screens (even in desktop-mode) are < 800px
+    if(MOBILE_ALLOWED_USERS.has(userIdentifier)){
+      return next();
+    }
+    else{
+      if(deviceWidth < 800){
+        return res.status(403).json({
+          status: "error",
+          message: "Login not allowed from mobile or desktop-mode browser.",
+          details: { width: deviceWidth }
+        });
+      }
+    }
+    
+    // **********************************************************
 
     return next();
+
   } catch (error) {
-    console.error("Login restriction error:", error);
+    console.error("Login Restriction Error:", error);
     return res.status(403).json({
       status: "error",
       message: "Login not allowed",

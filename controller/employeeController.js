@@ -225,27 +225,9 @@ export const updateEmployeeDocuments = async (req, res) => {
 };
 export const getEmployee = async (req, res) => {
   try {
-    const employeeId = req.params.id;
+   
 
-    // --- Case 1: If specific employee ID is passed ---
-    if (employeeId) {
-      const employee = await User.findById(employeeId).select('-password');
-
-      if (!employee) {
-        return res.status(404).json({
-          success: false,
-          message: "Employee not found"
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: employee,
-        message: "Employee data fetched successfully"
-      });
-    }
-
-    // --- Case 2: Get paginated list ---
+   
     let { page, limit, sortBy, sortOrder, search, department, status } = req.query;
 
     page = parseInt(page) || 1;
@@ -255,7 +237,7 @@ export const getEmployee = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    // ✅ Base query
+  
     let query = {};
 
     // 🔹 If logged-in user is manager → restrict by department
@@ -263,7 +245,7 @@ export const getEmployee = async (req, res) => {
       query.department = req.user.department; // e.g. "sales"
     }
 
-    // 🔹 Apply search filter
+  
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -290,18 +272,22 @@ export const getEmployee = async (req, res) => {
       sort.createdAt = -1;
     }
 
-    const totalEmployees = await User.countDocuments(query);
+  
+    
+
+    const [employees, totalEmployees] = await Promise.all([
+      User.find(query)
+        .select('-password')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    
+      User.countDocuments(query)
+    ]);
     const totalPages = Math.ceil(totalEmployees / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
-
-    const employees = await User.find(query)
-      .select('-password')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
     return res.status(200).json({
       success: true,
       data: employees,
@@ -323,7 +309,7 @@ export const getEmployee = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch employees",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      error:error.message
     });
   }
 };
@@ -339,9 +325,7 @@ export const getEmployee = async (req, res) => {
         });
       }
   
-      // =======================
-      // 🔹 Monthly Attendance
-      // =======================
+      
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -361,9 +345,7 @@ export const getEmployee = async (req, res) => {
       const absentDays = monthlyRecords.filter(r => r.status?.toLowerCase() === "absent").length;
       const lateDays = monthlyRecords.filter(r => r.status?.toLowerCase() === "late").length;
   
-      // =======================
-      // 🔹 Today's Attendance
-      // =======================
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

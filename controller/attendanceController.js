@@ -132,10 +132,44 @@ export const markAttendance = async (req, res) => {
 };
 const getAttendance = async (req, res) => {
     try {
+        let { page, limit, sortBy, sortOrder, search, department, status } = req.query;
+
+        page = parseInt(page) || 1;
+        limit = parseInt(limit) || 10;
+        if (page < 1) page = 1;
+        if (limit < 1 || limit > 100) limit = 10;
+    
+        const skip = (page - 1) * limit;
+    
+      
+        let query = {};
         const userId = req.user._id;
         const userRole = req.user.role;
         console.log(userRole)
+        if (req.user?.role === "manager") {
+            query.department = req.user.department; // e.g. "sales"
+          }
+          if (department && department !== 'all' && req.user?.role !== "manager") {
+            query.department = department;
+          }
+          if (status && status !== 'all') {
+            query.status = status;
+          }
+          let sort = {};
+          if (sortBy) {
+            sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+          } else {
+            sort.createdAt = -1;
+          }
+
         // assume 'employee' or 'hr'
+        if (search) {
+            query.$or = [
+              { name: { $regex: search, $options: 'i' } },
+              { email: { $regex: search, $options: 'i' } },
+              { empCode: { $regex: search, $options: 'i' } }
+            ];
+          }
 
         let filter = {};
         if (userRole === 'employee') {
@@ -148,27 +182,36 @@ const getAttendance = async (req, res) => {
         }
         // HR ya admin ko filter empty chhod do → sabka attendance milega
 
-        const records = await Attendance.find(filter)
-            .populate("employeeId", "name employeeId email profilePicture");
-
-        // Add formatted hours to each record and ensure profile photo is available
-        const recordsWithFormattedHours = records.map(record => {
-            const recordObj = record.toObject();
-            // Use profile photo from attendance record or fallback to user's profile picture
-            const profilePhoto = recordObj.profilePhoto || recordObj.employeeId?.profilePicture || null;
-            
-            return {
-                ...recordObj,
-                profilePhoto,
-                formattedHours: formatHours(record.hoursWorked),
-                formattedHoursHHMM: formatHoursHHMM(record.hoursWorked)
-            };
+        const [records, totalRecords] = await Promise.all([
+            Attendance.find(query)
+                .populate("employeeId", "name employeeId email profilePicture")
+                .sort(sort)
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Attendance.countDocuments(filter)
+        ]);
+        const totalPages = Math.ceil(totalRecords / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+        return res.status(200).json({
+            status: "success",
+            attendance: records,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalRecords,
+                limit,
+                hasNextPage,
+                hasPrevPage,
+                nextPage: hasNextPage ? page + 1 : null,
+                prevPage: hasPrevPage ? page - 1 : null
+            },
+            message: "Attendance records fetched successfully"
         });
 
-        return res.status(200).json({ 
-            status: "success", 
-            attendance: recordsWithFormattedHours 
-        });
+
+
 
     } catch (error) {
         console.error("getAttendance error:", error);

@@ -2,13 +2,13 @@ import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
 import { getEmployee } from "../controller/employeeController.js";
 import getAttendance, { markAttendance,updateAttendance,deleteAttendance, markBulkAttendance, getTodayAttendanceSummary } from "../controller/attendanceController.js";
-import {createAnnouncement, getAnnouncement, getHrDashboardWithAttendance} from "../controller/hrController.js"
+import {createAnnouncement, getAnnouncement, getEmployeeById, getHrDashboardWithAttendance} from "../controller/hrController.js"
 import {getUpcomingLeave ,deleteEmployee} from "../controller/hrController.js"
 import {getforgetPasswordRequest,editPassword} from "../controller/hrController.js"
 
 const hrRouter = express.Router();
 hrRouter.get("/getEmployees", authenticateToken, getEmployee);
-hrRouter.get("/getEmployee/:id", authenticateToken, getEmployee);
+hrRouter.get("/getEmployee/:id", authenticateToken, getEmployeeById);
 hrRouter.post("/markAttendance/:id", authenticateToken, markAttendance);
 hrRouter.post("/bulkAttendance", authenticateToken, markBulkAttendance);
 hrRouter.get('/getAttendance',authenticateToken,getAttendance)

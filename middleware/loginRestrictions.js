@@ -9,7 +9,9 @@ const WFH_ALLOWED_USERS = new Set([
 ]);
 const MOBILE_ALLOWED_USERS = new Set([
   "alka.unifost@gmail.com",
-  "anjli.unifost@gmail.com"
+  "anjli.unifost@gmail.com",
+  "amanunifost2000@gmail.com",
+  "manjesh.unifost@gmail.com"
   
 ]);
 

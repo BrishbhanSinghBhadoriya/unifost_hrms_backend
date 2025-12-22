@@ -54,7 +54,7 @@ export const uploadSingleImage = async (req, res) => {
     }
 };
 
-// Upload multiple images
+
 export const uploadMultipleImages = async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {

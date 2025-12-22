@@ -18,7 +18,8 @@ const UserSchema = new mongoose.Schema({
     fatherName:{type:String,default:""},
     bloodGroup:{type:String,default:""},
     email: { type: String, required: true, unique: true },
-    phone: { type: Number, required: true },
+    phone: { type: String, required: true },
+    
     address: {
         street: { type: String, default: "" },   
         city: { type: String, default: "" },
@@ -31,12 +32,12 @@ const UserSchema = new mongoose.Schema({
     gender: { type: String, enum: ["male", "female", "other"], default: "male" },
     profilePicture: { type: String, default: "" },
     professionalEmailId:{type:String, default: ""},
-    emergencyContactNo:{type:Number, default: ""},
+    emergencyContactNo:{type:String, default: ""},
 
     
     // Employment Information
     employeeId: { type: String, required: true, unique: true },
-    joiningDate: { type: Date, default: null },
+    joiningDate: { type: Date, default: null ,required:true}, 
     experience: [
         {
           company: { type: String, required: true,default:" " },

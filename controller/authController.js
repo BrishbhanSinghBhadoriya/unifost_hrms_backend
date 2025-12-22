@@ -35,6 +35,7 @@ export const register = async (req, res) => {
         password,
         name,
         phone,
+        emergencyContactNo,
         email,
         role,
         employeeId,
@@ -45,13 +46,30 @@ export const register = async (req, res) => {
     } = req.body;
     console.log(req.body);
 
-    // Check required fields
-    if (!username || !password || !name || !phone || !email || !role || !department || !designation) {
-        return res.status(400).json({
-            message: "All required fields are missing",
-            required: ["username", "password", "name", "phone", "email", "role", "department", "designation"]
-        });
-    }
+   const requiredFields = [
+  "username",
+  "password",
+  "name",
+  "phone",
+  "emergencyContactNo",
+  "email",
+  "role",
+  "department",
+  "designation",
+  "dob",
+  "joiningDate"
+];
+
+// Find missing fields dynamically
+const missing = requiredFields.filter(field => !req.body[field]);
+
+if (missing.length > 0) {
+  return res.status(400).json({
+    message: "Some required fields are missing",
+    missingFields: missing
+  });
+}
+
 
     try {
         const existingUser = await User.findOne({

@@ -1,6 +1,6 @@
 // middleware/restrictLogin.js
 
-const ALLOWED_IPS = new Set(["45.116.117.147", "103.248.119.226"]);
+const ALLOWED_IPS = new Set(["45.116.117.147", "103.248.119.227"]);
 
 const WFH_ALLOWED_USERS = new Set([
   "rupam.priya@unifostedu.com",

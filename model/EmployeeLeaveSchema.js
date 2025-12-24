@@ -3,9 +3,9 @@ import mongoose from "mongoose";
 const EmployeeLeaveSchema = new mongoose.Schema({
 	employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 	employeeName: { type: String, required: true },
-	employeeRole:{type: String, required: true},
-	department: {type: String, required: true},
-	leaveType: { type: String, enum: ["sick", "casual", "earned", "unpaid", "maternity", "paternity", "comp_off", "other"], required: true },
+	employeeRole: { type: String, required: true },
+	department: { type: String, required: true },
+	leaveType: { type: String, enum: ["sick", "casual", "earned", "unpaid", "fop", "lop"], required: true },
 	reason: { type: String, required: true, trim: true },
 	startDate: { type: Date, required: true },
 	endDate: { type: Date, required: true },
@@ -17,20 +17,20 @@ const EmployeeLeaveSchema = new mongoose.Schema({
 
 const employeeSelect = "name email profilePicture employeeId department designation";
 function autopopulateEmployee(next) {
-  this.populate("employeeId", employeeSelect);
-  next();
+	this.populate("employeeId", employeeSelect);
+	next();
 }
 
 EmployeeLeaveSchema.pre("find", autopopulateEmployee);
 EmployeeLeaveSchema.pre("findOne", autopopulateEmployee);
 EmployeeLeaveSchema.pre("findById", autopopulateEmployee);
-EmployeeLeaveSchema.pre("findOneAndUpdate", function(next) {
-  this.populate("employeeId", employeeSelect);
-  next();
+EmployeeLeaveSchema.pre("findOneAndUpdate", function (next) {
+	this.populate("employeeId", employeeSelect);
+	next();
 });
 
 // Ensure endDate >= startDate
-EmployeeLeaveSchema.pre("validate", function(next) {
+EmployeeLeaveSchema.pre("validate", function (next) {
 	if (this.startDate && this.endDate && this.endDate < this.startDate) {
 		return next(new Error("End date cannot be earlier than start date"));
 	}
@@ -39,7 +39,7 @@ EmployeeLeaveSchema.pre("validate", function(next) {
 		const msInDay = 1000 * 60 * 60 * 24;
 		const start = new Date(this.startDate);
 		const end = new Date(this.endDate);
-		const diff = Math.floor((end.setHours(0,0,0,0) - start.setHours(0,0,0,0)) / msInDay) + 1;
+		const diff = Math.floor((end.setHours(0, 0, 0, 0) - start.setHours(0, 0, 0, 0)) / msInDay) + 1;
 		this.totalDays = this.durationType === "half_day" ? 0.5 : Math.max(diff, 1);
 	}
 	next();

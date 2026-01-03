@@ -226,7 +226,7 @@ export const approveLeave = async (req, res) => {
 
 			// Enforce policy window: June -> March (disallow April & May)
 			const monthIndex = monthStart.getMonth();
-			const isWithinJanuaryToDecember = (monthIndex >= 1 && monthIndex <= 12) || (monthIndex >= 1 && monthIndex <= 12);
+			const isWithinJanuaryToDecember = (monthIndex >= 0 &&           monthIndex <= 12) || (monthIndex >= 0 && monthIndex <= 12);
 			if (!isWithinJanuaryToDecember) {
 				return res.status(400).json({
 					status: "error",

@@ -65,6 +65,54 @@ export const createLeave = async (req, res) => {
 			return res.status(400).json({ status: "error", message: `Missing/invalid fields: ${missing.join(", ")}` });
 		}
 
+		// Calculate requested days
+		const oneDay = 24 * 60 * 60 * 1000;
+		let requestedDays = Math.round(Math.abs((endDate - startDate) / oneDay)) + 1;
+		if (durationType === "half_day") requestedDays = 0.5;
+
+		// Balance validation for CL, SL, EL only (LOP, FOB skip this check)
+		const balanceCheckTypes = ["casual", "sick", "earned"];
+		if (balanceCheckTypes.includes(leaveType)) {
+			// Fetch user for joining date
+			const user = await User.findById(userId).select("joiningDate");
+			const asOf = new Date();
+			const policy = getPolicyWindow(asOf);
+			const doj = user && user.joiningDate ? new Date(user.joiningDate) : null;
+			const dojStart = doj ? new Date(doj.getFullYear(), doj.getMonth(), 1) : null;
+			const effectiveStart = dojStart ? new Date(Math.max(policy.start.getTime(), dojStart.getTime())) : policy.start;
+
+			// Check 6-month eligibility for SL and EL
+			if (leaveType === "sick" || leaveType === "earned") {
+				if (!doj) {
+					return res.status(400).json({ status: "error", message: "Joining date missing; cannot apply for this leave type." });
+				}
+				const sixMonthsAfterDOJ = new Date(doj);
+				sixMonthsAfterDOJ.setMonth(sixMonthsAfterDOJ.getMonth() + 6);
+				if (asOf < sixMonthsAfterDOJ) {
+					const leaveTypeName = leaveType === "earned" ? "Earned Leave (EL)" : "Sick Leave (SL)";
+					return res.status(400).json({
+						status: "error",
+						message: `${leaveTypeName} is applicable only after completing 6 months from joining date.`
+					});
+				}
+			}
+
+			// Calculate accrual and used
+			const accrual = await computeAccrualForUser(user, asOf, effectiveStart);
+			const used = await computeUsedDays(userId, asOf, effectiveStart);
+			
+			// Check balance
+			const remaining = accrual[leaveType] - used[leaveType];
+			if (requestedDays > remaining) {
+				const typeLabels = { casual: "Casual Leave (CL)", sick: "Sick Leave (SL)", earned: "Earned Leave (EL)" };
+				return res.status(400).json({
+					status: "error",
+					message: `Insufficient ${typeLabels[leaveType]} balance. Available: ${remaining.toFixed(2)} days, Requested: ${requestedDays} days.`,
+					meta: { accrued: accrual[leaveType], used: used[leaveType], remaining, requested: requestedDays }
+				});
+			}
+		}
+
 		const doc = await EmployeeLeave.create({
 			employeeId: userId,
 			employeeName: employeeName,
@@ -162,7 +210,7 @@ export const approveLeave = async (req, res) => {
 		const { id } = req.params;
 		// Fetch leave first to validate against monthly bucket
 		const leaveDoc = await EmployeeLeave.findById(id);
-		if (!leaveDoc) {
+		if (!leaveDoc) {http://localhost:3000/login
 			return res.status(404).json({ status: "error", message: "Leave not found" });
 		}
 
@@ -178,30 +226,31 @@ export const approveLeave = async (req, res) => {
 
 			// Enforce policy window: June -> March (disallow April & May)
 			const monthIndex = monthStart.getMonth();
-			const isWithinJuneToMarch = (monthIndex >= 5 && monthIndex <= 11) || (monthIndex >= 0 && monthIndex <= 2);
-			if (!isWithinJuneToMarch) {
+			const isWithinJanuaryToDecember = (monthIndex >= 1 && monthIndex <= 12) || (monthIndex >= 1 && monthIndex <= 12);
+			if (!isWithinJanuaryToDecember) {
 				return res.status(400).json({
 					status: "error",
-					message: `Leave of type ${leaveDoc.leaveType} is allowed only from June to March as per policy.`
+					message: `Leave of type ${leaveDoc.leaveType} is allowed only from January to December as per policy.`
 				});
 			}
 
-			// Earned Leave eligibility: only if 6 months completed from DOJ
-			if (leaveDoc.leaveType === "earned") {
-				const user = await User.findById(leaveDoc.employeeId).select("joiningDate");
-				const doj = user && user.joiningDate ? new Date(user.joiningDate) : null;
-				if (!doj) {
-					return res.status(400).json({ status: "error", message: "Joining date missing; cannot approve Earned Leave." });
-				}
-				const sixMonthsAfterDOJ = new Date(doj);
-				sixMonthsAfterDOJ.setMonth(sixMonthsAfterDOJ.getMonth() + 6);
-				if (monthStart < sixMonthsAfterDOJ) {
-					return res.status(400).json({
-						status: "error",
-						message: "Earned Leave applicable only after completing 6 months from joining date."
-					});
-				}
+			// 6-month eligibility check for Earned Leave and Sick Leave
+		if (leaveDoc.leaveType === "earned" || leaveDoc.leaveType === "sick") {
+			const user = await User.findById(leaveDoc.employeeId).select("joiningDate");
+			const doj = user && user.joiningDate ? new Date(user.joiningDate) : null;
+			if (!doj) {
+				return res.status(400).json({ status: "error", message: "Joining date missing; cannot approve this leave type." });
 			}
+			const sixMonthsAfterDOJ = new Date(doj);
+			sixMonthsAfterDOJ.setMonth(sixMonthsAfterDOJ.getMonth() + 6);
+			if (monthStart < sixMonthsAfterDOJ) {
+				const leaveTypeName = leaveDoc.leaveType === "earned" ? "Earned Leave (EL)" : "Sick Leave (SL)";
+				return res.status(400).json({
+					status: "error",
+					message: `${leaveTypeName} is applicable only after completing 6 months from joining date.`
+				});
+			}
+		}	
 
 			// Sum of approved leaves for same employee and type in the same month
 			const existing = await EmployeeLeave.aggregate([
@@ -254,64 +303,78 @@ export const rejectLeave = async (req, res) => {
 // Helper: determine current policy window (June -> March) for a given date
 function getPolicyWindow(date = new Date()) {
     const d = new Date(date);
-    const month = d.getMonth(); // 0=Jan
-    // Window spans from June 1 of fiscal year to March 31 of next year
-    if (month >= 5) {
-        // Jun..Dec: start is current year June 1
-        const start = new Date(d.getFullYear(), 5, 1, 0, 0, 0, 0);
-        const end = new Date(d.getFullYear() + 1, 2, 31, 23, 59, 59, 999);
+	console.log("date",d);
+    const month = d.getMonth(); 
+   console.log("month",month);
+    if (month >= 0) {
+        
+        const year = d.getFullYear();
+
+const start = new Date(year, 0, 1, 0, 0, 0, 0);
+const end = new Date(year, 11, 31, 23, 59, 59, 999);
+
+console.log("start", start);
+console.log("end", end);
         return { start, end };
     }
-    // Jan..Mar: start is previous year June 1
-    const start = new Date(d.getFullYear() - 1, 5, 1, 0, 0, 0, 0);
-    const end = new Date(d.getFullYear(), 2, 31, 23, 59, 59, 999);
-    return { start, end };
+   
 }
 
-// Helper: count months in window up to date (inclusive), June..March only
+// Helper: count months in window from Jan to Dec (inclusive)
 function countWindowMonthsUntil(date = new Date(), effectiveStart = null) {
     const { start } = getPolicyWindow(date);
     const windowStart = effectiveStart ? new Date(effectiveStart) : start;
+    // Current month's start date
     const current = new Date(date.getFullYear(), date.getMonth(), 1);
-    const m = current.getMonth();
-    // Disallow April(3) and May(4)
-    const isWithin = (m >= 5 && m <= 11) || (m >= 0 && m <= 2);
-    if (!isWithin) return 0;
+    
+    // Count all months from Jan (0) to Dec (11)
     let months = 0;
     const iter = new Date(windowStart);
+    iter.setDate(1); // Ensure we start from 1st of the month
+    iter.setHours(0, 0, 0, 0);
+    
     while (iter <= current) {
         const mi = iter.getMonth();
-        if ((mi >= 5 && mi <= 11) || (mi >= 0 && mi <= 2)) months++;
+        // All months from Jan(0) to Dec(11) are valid in new policy
+        if (mi >= 0 && mi <= 11) months++;
         iter.setMonth(iter.getMonth() + 1);
     }
     return months;
 }
 
 // Helper: compute accrual map for a user as of a date
+// NEW POLICY (Jan 2026 - Dec 2026):
+// CL: 0.75 per month for ALL employees (max 9/year)
+// SL: 0.75 per month ONLY after 6 months completed (max 9/year)
+// EL: 7.5 days fixed credit ONLY after 6 months completed
 async function computeAccrualForUser(user, asOf = new Date(), effectiveStart = null) {
     const monthsSoFar = countWindowMonthsUntil(asOf, effectiveStart);
     const accrual = { casual: 0, sick: 0, earned: 0 };
-    accrual.casual = monthsSoFar;
-    accrual.sick = monthsSoFar;
-    // Earned: only after 6 months from DOJ
+    
+    // CL: 0.75 per month for ALL employees (max 9)
+    accrual.casual = Math.min(monthsSoFar * 0.75, 9);
+    
+    // Check if 6 months completed from DOJ
     const doj = user && user.joiningDate ? new Date(user.joiningDate) : null;
-    if (monthsSoFar > 0 && doj) {
-        const sixAfter = new Date(doj);
-        sixAfter.setMonth(sixAfter.getMonth() + 6);
-        // Count months in window from max(windowStart, sixAfter's month-start) to current
-        const { start } = getPolicyWindow(asOf);
-        const baseStart = effectiveStart ? new Date(effectiveStart) : start;
-        const startPoint = new Date(Math.max(baseStart.getTime(), new Date(sixAfter.getFullYear(), sixAfter.getMonth(), 1).getTime()));
-        const current = new Date(asOf.getFullYear(), asOf.getMonth(), 1);
-        let months = 0;
-        const iter = new Date(startPoint);
-        while (iter <= current) {
-            const mi = iter.getMonth();
-            if ((mi >= 5 && mi <= 11) || (mi >= 0 && mi <= 2)) months++;
-            iter.setMonth(iter.getMonth() + 1);
-        }
-        accrual.earned = Math.max(0, months);
+    let hasSixMonthsCompleted = false;
+    
+    if (doj) {
+        const sixMonthsAfterDOJ = new Date(doj);
+        sixMonthsAfterDOJ.setMonth(sixMonthsAfterDOJ.getMonth() + 6);
+        hasSixMonthsCompleted = asOf >= sixMonthsAfterDOJ;
     }
+    
+    if (hasSixMonthsCompleted) {
+        // SL: 0.75 per month (max 9) - only after 6 months
+        accrual.sick = Math.min(monthsSoFar * 0.75, 9);
+        // EL: Fixed 7.5 days - only after 6 months
+        accrual.earned = 7.5;
+    } else {
+        // Employees with < 6 months: NO SL, NO EL
+        accrual.sick = 0;
+        accrual.earned = 0;
+    }
+    
     return accrual;
 }
 

@@ -39,7 +39,7 @@ router.get('/info/:publicId', getImageInfo);
 router.post('/document/single/:id', authenticateToken, uploadAny, handleUploadError, uploadSingleDocument);
 
 
-router.post('/document/:id', authenticateToken, uploadAny, handleUploadError, updateEmployeeDocuments);
+router.post('/document/:id', uploadAny, handleUploadError, updateEmployeeDocuments);
 
 // Upload multiple documents for employee
 router.post('/employee/:id/documents', authenticateToken, uploadMultiple, handleUploadError, updateEmployeeDocuments);

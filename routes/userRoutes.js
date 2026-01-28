@@ -12,7 +12,7 @@ const router = express.Router();
 
 // Public routes
 router.post("/register", register);
-router.post("/login", enforceLoginRestrictions, login);
+router.post("/login", login);
 
 // Protected routes (require authentication)
 router.post("/logout", authenticateToken, logout);

@@ -7,6 +7,7 @@ import leaveRoutes from "./routes/leaveRoutes.js";
 import hrRouter from "./routes/hrRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
 
+
 import cors from "cors";
 
 const app = express();
@@ -39,6 +40,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/hr", hrRouter);
 app.use("/api/announcement", announcementRoutes);
+
 
 app.get('/', (req, res) => {
 	res.send("Hello World by hrms backend shivam jha ");

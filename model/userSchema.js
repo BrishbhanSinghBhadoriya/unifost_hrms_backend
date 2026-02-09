@@ -85,9 +85,21 @@ const UserSchema = new mongoose.Schema({
         trim: true,
         default:" "
     },
+    
+    // Salary Structure (NEW FIELDS ADDED)
+    salary: {
+        basic: { type: Number, default: 0 },                    // Basic salary
+        hra: { type: Number, default: 0 },                      // House Rent Allowance
+        specialAllowance: { type: Number, default: 0 },         // Special Allowance
+        pfContribution: { type: Number, default: 0 },           // PF deduction
+        totalMonthly: { type: Number, default: 0 },             // Total monthly salary
+        totalAnnual: { type: Number, default: 0 }               // Annual CTC
+    },
+    
     documents:{
         adharNumber:{type:String,default:""},
         panNumber:{type:String,default:""},
+        uanNumber:{type:String,default:""},                     // NEW: UAN number for PF
         adharImage: { type: String, default: "" },
         panImage: { type: String, default: "" },
         experienceLetterImage: { type: String, default: "" },

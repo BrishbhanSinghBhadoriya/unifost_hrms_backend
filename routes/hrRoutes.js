@@ -7,6 +7,8 @@ import { getUpcomingLeave, deleteEmployee } from "../controller/hrController.js"
 import { getforgetPasswordRequest, editPassword } from "../controller/hrController.js"
 
 const hrRouter = express.Router();
+
+// Existing routes
 hrRouter.get("/getEmployeesbypagination", authenticateToken, getEmployeebypagination);
 hrRouter.get("/getEmployees", authenticateToken, getEmployee);
 hrRouter.get("/getEmployee/:id", authenticateToken, getEmployeeById);
@@ -24,5 +26,6 @@ hrRouter.delete('/deleteEmployee/:id', authenticateToken, deleteEmployee)
 hrRouter.get("/getforgetPasswordRequest", authenticateToken, getforgetPasswordRequest);
 hrRouter.put("/reset-password", authenticateToken, editPassword)
 
-export default hrRouter;
 
+
+export default hrRouter;

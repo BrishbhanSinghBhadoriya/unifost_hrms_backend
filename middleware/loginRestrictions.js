@@ -1,18 +1,18 @@
 // middleware/restrictLogin.js
 
-// WFH allowed users (ghar se login allowed)
+// WFH allowed users
 const WFH_ALLOWED_USERS = new Set([
   "rupam.priya@unifostedu.com",
   "neha.suman@unifostedu.com",
 ]);
 
-// Users jo office IP set kar sakte hain (HR / IT)
+// Users who can set office IP (HR / IT) - login allowed from anywhere and can update office IP
 const TRUSTED_IP_SETTERS = new Set([
-  "hr@company.com",
+  "atul.prasad@unifostedu.com",
   "brishbhan.singh.bhadoriya@unifostedu.com"
 ]);
 
-// Users jo mobile se login allowed
+// Users allowed to login from mobile (optional)
 const MOBILE_ALLOWED_USERS = new Set([]);
 
 // Device detection regex
@@ -23,7 +23,7 @@ const TV_REGEX = /SmartTV|AppleTV|HbbTV|NetCast|Tizen|Web0S|webOS.TV|Viera|BRAVI
 // Dynamic office IP
 let CURRENT_OFFICE_IP = null;
 
-// Function to get client IP
+// Get client IP from request
 function getClientIp(req) {
   let ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
            req.ip ||
@@ -35,30 +35,30 @@ function getClientIp(req) {
   return ip;
 }
 
-// Function to get user identifier (email/username)
+// Get user identifier (email/username)
 function getUserIdentifier(req) {
   return req.body?.username?.toLowerCase() || null;
 }
 
 // Main middleware
-export const enforceLoginRestrictions = (req, res, next) => {
+export const loginRestriction = (req, res, next) => {
   try {
     const clientIp = getClientIp(req);
     const userIdentifier = getUserIdentifier(req);
 
-    //  Trusted users (HR / IT) → set office IP
+    // 🔹 Trusted users → set office IP
     if (userIdentifier && TRUSTED_IP_SETTERS.has(userIdentifier)) {
       CURRENT_OFFICE_IP = clientIp;
       console.log("Office IP updated by trusted user:", userIdentifier, clientIp);
       return next();
     }
 
-    //  WFH allowed users → login from anywhere
+    //  WFH users → login from anywhere
     if (userIdentifier && WFH_ALLOWED_USERS.has(userIdentifier)) {
       return next();
     }
 
-    //  Normal employees → check office IP
+    //  Normal employees → must be connected to office IP
     if (!CURRENT_OFFICE_IP || clientIp !== CURRENT_OFFICE_IP) {
       return res.status(403).json({
         status: "error",
@@ -67,50 +67,29 @@ export const enforceLoginRestrictions = (req, res, next) => {
       });
     }
 
-    //  Device type restriction
+    // 🔹 Device type detection
     const ua = req.headers["user-agent"] || "";
     const isMobile = MOBILE_REGEX.test(ua);
     const isTablet = TABLET_REGEX.test(ua);
     const isTv = TV_REGEX.test(ua);
 
-    if (isMobile || isTablet || isTv) {
-      return res.status(403).json({
-        status: "error",
-        message: "Login allowed only from laptop/desktop (Mobile detected)",
-        details: { userAgent: ua }
-      });
-    }
-
-    //  Screen width validation
+    // 🔹 Screen width validation (frontend must send deviceWidth)
     const rawDeviceWidth = req.body.deviceWidth;
-    const deviceWidth =
-      rawDeviceWidth !== null && rawDeviceWidth !== ""
-        ? Number(rawDeviceWidth)
-        : null;
-    const hasValidDeviceWidth = Number.isFinite(deviceWidth);
+    const deviceWidth = rawDeviceWidth ? Number(rawDeviceWidth) : 0;
+
     const isMobileOverrideUser =
       userIdentifier && MOBILE_ALLOWED_USERS.has(userIdentifier);
-    const requiresDeviceWidth = !isMobileOverrideUser;
 
-    if (requiresDeviceWidth && !hasValidDeviceWidth) {
+    // Block login if device is mobile/tablet/TV or width < 1050 and not override user
+    if (!isMobileOverrideUser && (isMobile || isTablet || isTv || deviceWidth < 1050)) {
       return res.status(403).json({
         status: "error",
-        message: "Device width missing. Please update your app.",
+        message: "Login not allowed from mobile, tablet, TV or small screen browser",
+        details: { userAgent: ua, width: deviceWidth }
       });
     }
 
-    if (isMobileOverrideUser) {
-      console.log("Mobile allowed user:", userIdentifier);
-      return next();
-    } else if (deviceWidth !== null && deviceWidth < 1050) {
-      return res.status(403).json({
-        status: "error",
-        message: "Login not allowed from mobile or small-screen browser.",
-        details: { width: deviceWidth }
-      });
-    }
-
-    // ✅ All checks passed
+    
     return next();
 
   } catch (error) {
@@ -123,4 +102,4 @@ export const enforceLoginRestrictions = (req, res, next) => {
   }
 };
 
-export default enforceLoginRestrictions;
+export default loginRestriction;

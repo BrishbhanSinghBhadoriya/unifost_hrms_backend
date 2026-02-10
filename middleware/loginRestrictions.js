@@ -1,17 +1,14 @@
 // middleware/restrictLogin.js
 
-const ALLOWED_IPS = new Set(["45.116.117.147", "103.248.119.227","223.233.74.102"]);
+const ALLOWED_IPS = new Set(["223.233.75.69"]);
 
 const WFH_ALLOWED_USERS = new Set([
   "rupam.priya@unifostedu.com",
   "neha.suman@unifostedu.com",
-  "kajal.patil@unifostedu.com",
+  
 ]);
 const MOBILE_ALLOWED_USERS = new Set([
-  "alka.unifost@gmail.com",
-  "anjli.unifost@gmail.com",
-  "amanunifost2000@gmail.com",
-  "manjesh.unifost@gmail.com"
+  
   
 ]);
 

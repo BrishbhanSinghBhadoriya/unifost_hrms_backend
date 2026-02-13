@@ -6,13 +6,13 @@ const WFH_ALLOWED_USERS = new Set([
   "neha.suman@unifostedu.com",
 ]);
 
-// Users who can set office IP (HR/IT)
+// Users who can set office IP 
 const TRUSTED_IP_SETTERS = new Set([
   "atul.prasad@unifostedu.com",
   "brishbhan.singh.bhadoriya@unifostedu.com"
 ]);
 
-// Users allowed mobile/tablet login (YAHAN ADD KARO agar kisi ko allow karna ho)
+
 const MOBILE_ALLOWED_USERS = new Set([
   // "example@unifostedu.com"  // Uncomment to allow mobile
 ]);
@@ -59,24 +59,24 @@ export const enforceLoginRestrictions = (req, res, next) => {
 
     console.log("Login attempt from:", { ip: clientIp, user: userIdentifier });
 
-    // ✅ STEP 1: Trusted users (HR/IT) → set office IP and allow
+    //  Trusted users (HR/IT) → set office IP and allow
     if (userIdentifier && TRUSTED_IP_SETTERS.has(userIdentifier)) {
       CURRENT_OFFICE_IP = clientIp;
       console.log("✅ Office IP updated by trusted user:", userIdentifier, "→", clientIp);
       return next();
     }
 
-    // ✅ STEP 2: Check if user is in mobile allowed list
+    //  Check if user is in mobile allowed list
     const isMobileAllowedUser = userIdentifier && MOBILE_ALLOWED_USERS.has(userIdentifier);
 
-    // ✅ STEP 3: Device Type Detection
+    //  Device Type Detection
     const ua = req.headers["user-agent"] || "";
     const isMobile = MOBILE_REGEX.test(ua);
     const isTablet = TABLET_REGEX.test(ua);
     const isTv = TV_REGEX.test(ua);
     const isMobileDevice = isMobile || isTablet || isTv;
 
-    // ✅ STEP 4: Block mobile/tablet UNLESS user is in allowed list
+    //  Block mobile/tablet UNLESS user is in allowed list
     if (isMobileDevice && !isMobileAllowedUser) {
       return res.status(403).json({
         status: "error",
@@ -89,10 +89,10 @@ export const enforceLoginRestrictions = (req, res, next) => {
       });
     }
 
-    // ✅ STEP 5: WFH users → skip IP check
+    //   WFH users → skip IP check
     const isWfhUser = userIdentifier && WFH_ALLOWED_USERS.has(userIdentifier);
 
-    // ✅ STEP 6: IP Restriction (skip for WFH users)
+    //   IP Restriction (skip for WFH users)
     if (!isWfhUser) {
       if (!CURRENT_OFFICE_IP) {
         return res.status(403).json({
@@ -114,7 +114,7 @@ export const enforceLoginRestrictions = (req, res, next) => {
       }
     }
 
-    // ✅ STEP 7: Screen Width Validation (skip for mobile allowed users)
+    //  Screen Width Validation (skip for mobile allowed users)
     if (!isMobileAllowedUser) {
       const rawDeviceWidth = req.body.deviceWidth;
       const deviceWidth = rawDeviceWidth !== null && rawDeviceWidth !== "" 

@@ -44,7 +44,7 @@ app.use("/api/announcement", announcementRoutes);
 
 
 app.get('/', (req, res) => {
-	res.send("Hello World by hrms backend shivam jha ");
+	res.send("Hello World by hrms backend Brishbhan Singh Bhadoriya ");
 });
 
 // Start server with fallback port

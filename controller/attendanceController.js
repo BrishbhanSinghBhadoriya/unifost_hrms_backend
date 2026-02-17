@@ -15,7 +15,7 @@ const getEndOfDay = (d) => {
 };
 
 // Safe parser for optional date inputs from request bodies
-// undefined → undefined (no change); "" or null → null (clear); invalid → throws
+// undefined → undefined (no change);  or null → null (clear); invalid → throws
 const parseOptionalDate = (value) => {
     if (value === undefined) return undefined;
     if (value === null || value === "") return null;

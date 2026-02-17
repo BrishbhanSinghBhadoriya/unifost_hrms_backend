@@ -9,7 +9,8 @@ const WFH_ALLOWED_USERS = new Set([
 // Users who can set office IP 
 const TRUSTED_IP_SETTERS = new Set([
   "atul.prasad@unifostedu.com",
-  "brishbhan.singh.bhadoriya@unifostedu.com"
+  "brishbhan.singh.bhadoriya@unifostedu.com",
+  "deepansh.mishra@unifostedu.com",
 ]);
 
 
